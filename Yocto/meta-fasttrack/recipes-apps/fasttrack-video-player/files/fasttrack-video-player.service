@@ -1,0 +1,18 @@
+[Unit]
+Description=Automotive USB Video Player IVI Service
+After=network.target systemd-udevd.service sound.target
+Wants=sound.target
+
+[Service]
+Type=simple
+Environment=QT_QPA_PLATFORM=eglfs
+Environment=QT_QPA_EGLFS_ALWAYS_SET_MODE=1
+Environment=XDG_RUNTIME_DIR=/run/user/0
+ExecStartPre=/usr/bin/setup_can.sh
+ExecStart=/usr/bin/fasttrack-video-player
+Restart=on-failure
+RestartSec=3s
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

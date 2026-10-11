@@ -1,0 +1,54 @@
+VERSION ""
+
+NS_ : 
+    NS_DESC_
+    CM_
+    BA_DEF_
+    BA_
+    VAL_
+    CAT_DEF_
+    CAT_
+    FILTER
+    BA_DEF_DEF_
+    EV_DATA_
+    ENVVAR_DATA_
+    SGTYPE_
+    SGTYPE_VAL_
+    BA_DEF_SGTYPE_
+    BA_SGTYPE_
+    SIG_TYPE_REF_
+    VAL_TABLE_
+    SIG_GROUP_
+    SIG_VALTYPE_
+    SIGTYPE_VALTYPE_
+    BO_TX_BU_
+    BA_DEF_REL_
+    BA_REL_
+    BA_DEF_DEF_REL_
+    BU_SG_REL_
+    BU_EV_REL_
+    BU_BO_REL_
+    SG_MUL_VAL_
+
+BS_:
+
+BU_: CANOE_GW TARGET_IVI
+
+BO_ 256 CMD_VideoPlayer: 8 CANOE_GW
+ SG_ Command_ID : 0|8@1+ (1,0) [0|4] "" TARGET_IVI
+ SG_ Seek_Command : 8|8@1+ (1,0) [0|6] "" TARGET_IVI
+ SG_ Seek_Step_Value : 16|8@1+ (1,0) [0|60] "s" TARGET_IVI
+ SG_ Cmd_Rolling_Counter : 24|4@1+ (1,0) [0|15] "" TARGET_IVI
+ SG_ Cmd_Checksum : 32|8@1+ (1,0) [0|255] "" TARGET_IVI
+
+BO_ 257 STAT_VideoPlayer: 8 TARGET_IVI
+ SG_ Playback_State : 0|8@1+ (1,0) [0|3] "" CANOE_GW
+ SG_ Current_Track_Index : 8|8@1+ (1,0) [0|255] "" CANOE_GW
+ SG_ Current_Play_Time : 16|16@0+ (1,0) [0|65535] "s" CANOE_GW
+ SG_ Total_Duration : 32|16@0+ (1,0) [0|65535] "s" CANOE_GW
+ SG_ System_Health_Status : 48|8@1+ (1,0) [0|255] "" CANOE_GW
+ SG_ Status_Alive_Counter : 56|8@1+ (1,0) [0|255] "" CANOE_GW
+
+VAL_ 256 Command_ID 0 "Idle" 1 "Play" 2 "Pause" 3 "Next" 4 "Previous" ;
+VAL_ 256 Seek_Command 0 "None" 5 "Fast_Forward" 6 "Fast_Backward" ;
+VAL_ 257 Playback_State 0 "Stopped" 1 "Playing" 2 "Paused" 3 "Error" ;
