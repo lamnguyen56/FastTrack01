@@ -35,6 +35,8 @@ downloads/
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE & Embedded Build
 .vscode/
 .idea/
+.pio/
+.pioenvs/

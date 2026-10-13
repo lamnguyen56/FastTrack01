@@ -1,10 +1,10 @@
 # TÀI LIỆU BASELINE DỰ ÁN VÀ KIẾN THỨC KỸ THUẬT TOÀN DIỆN
-# DỰ ÁN: EMBEDDED LINUX USB VIDEO PLAYER CONTROLLED VIA CAN (QT5/QML & CANOE)
+# DỰ ÁN: EMBEDDED LINUX USB VIDEO PLAYER CONTROLLED VIA CAN (QT5/QML & ESP32 CAN GATEWAY / CANOE)
 
 > **Mã dự án:** OJT-FASTTRACK-01  
 > **Tài liệu tham chiếu:** `Docs/OJT_USB_Video_Player_CAN_Qt5_QML 1 - Copy_1.pptx`  
-> **Lĩnh vực:** Embedded Automotive • Linux BSP/Yocto • Driver Development • Qt5/QML HMI • SocketCAN • Vector CANoe  
-> **Phiên bản tài liệu:** v1.0.0 (Release Baseline)  
+> **Lĩnh vực:** Embedded Automotive • Linux BSP/Yocto • Driver Development • Qt5/QML HMI • SocketCAN • ESP32 TWAI • Web Dashboard / CANoe  
+> **Phiên bản tài liệu:** v1.1.0 (Release Baseline - ESP32 CAN Gateway Redesign)  
 
 ---
 
@@ -16,7 +16,7 @@
 5. [Work Package B: Porting Qt5 & Multimedia GStreamer Stack](#5-work-package-b-porting-qt5--multimedia-gstreamer-stack)
 6. [Work Package C: Ứng Dụng HMI Qt5/QML & USB Media Scanner](#6-work-package-c-ứng-dụng-hmi-qt5qml--usb-media-scanner)
 7. [Đặc Tả Giao Thức CAN & Thiết Kế DBC (CAN Protocol & DBC Specification)](#7-đặc-tả-giao-thức-can--thiết-kế-dbc-can-protocol--dbc-specification)
-8. [Mô Phỏng & Kiểm Thử Bằng Vector CANoe & CAPL Script](#8-mô-phỏng--kiểm-thử-bằng-vector-canoe--capl-script)
+8. [Mô Phỏng & Điều Khiển Bằng ESP32 CAN Gateway & Web Dashboard (ESP32 Automotive Simulator)](#8-mô-phỏng--điều-khiển-bằng-esp32-can-gateway--web-dashboard-esp32-automotive-simulator)
 9. [Cấu Trúc Thư Mục Source Code Chuẩn Công Nghiệp (Repository Structure)](#9-cấu-trúc-thư-mục-source-code-chuẩn-công-nghiệp-repository-structure)
 10. [Kế Hoạch Thực Hiện, Phân Công Nhóm OJT & Tiêu Chí Nghiệm Thu](#10-kế-hoạch-thực-hiện-phân-công-nhóm-ojt--tiêu-chí-nghiệm-thu)
 
@@ -28,30 +28,32 @@
 Trong kiến trúc phần mềm ô tô hiện đại (Automotive E/E Architecture), hệ thống **In-Vehicle Infotainment (IVI)** và **Bảng đồng hồ kỹ thuật số (Digital Instrument Cluster)** không hoạt động biệt lập. Chúng liên tục giao tiếp với các hộp điều khiển trung tâm (Gateway ECU, Body Control Module - BCM, Steering Wheel Switches) thông qua mạng truyền thông trên xe, phổ biến nhất là **CAN (Controller Area Network)**.
 
 Đề tài **"USB Video Player Controlled via CAN"** tái hiện một chu trình kỹ thuật hoàn chỉnh (End-to-End Automotive Product Development):
-- **Phía Phương tiện (Vehicle Bus):** Công cụ tiêu chuẩn công nghiệp **Vector CANoe** đóng vai trò Gateway/Body Controller, gửi các lệnh điều khiển giải trí (Play, Pause, Next, Prev, Fast Forward, Rewind) và giám sát trạng thái trình phát qua CAN bus.
-- **Phía Thiết bị IVI (Linux Target):** Một bo mạch nhúng (Raspberry Pi / Linux Target) chạy hệ điều hành Embedded Linux được cấu hình chuẩn xác, tự động nhận diện thiết bị lưu trữ ngoài (USB Drive), quét media đệ quy, hiển thị video độ phân giải cao bằng **Qt5/QML** thông qua backend giải mã **GStreamer**, đồng thời nhận diện và phản hồi tức thời các lệnh CAN qua SocketCAN.
+- **Phía Phương tiện & Giả lập Điều khiển (Vehicle Gateway & Control Node):** Thay vì phụ thuộc hoàn toàn vào hệ thống máy trạm và bản quyền đắt đỏ của Vector CANoe (vốn khó tiếp cận trong môi trường Lab/OJT/Di động), dự án thiết kế một nút điều khiển phần cứng độc lập **ESP32 CAN Gateway Simulator** (sử dụng ngoại vi phần cứng **TWAI - Two-Wire Automotive Interface** kết hợp transceiver 3.3V SN65HVD230). Node ESP32 này đóng vai trò Body Control Module / Steering Wheel Gateway, đồng thời tích hợp **Embedded Web Dashboard thời gian thực (qua Wi-Fi SoftAP / WebSockets)** cho phép điều khiển trực tiếp từ bất kỳ Smartphone, Tablet hay Laptop nào mà không cần cài đặt phần mềm. Ngoài ra, hệ thống vẫn duy trì 100% tính tương thích với chuẩn CAN Database (.dbc) để có thể kết nối song song với Vector CANoe / SavvyCAN khi cần đo kiểm chuyên sâu.
+- **Phía Thiết bị IVI (Linux Target):** Một bo mạch nhúng (Raspberry Pi / Linux Target) chạy hệ điều hành Embedded Linux (Yocto Kirkstone) được cấu hình chuẩn xác, tự động nhận diện thiết bị lưu trữ ngoài (USB Drive), quét media đệ quy, hiển thị video độ phân giải cao bằng **Qt5/QML** thông qua backend giải mã **GStreamer**, đồng thời nhận diện và phản hồi tức thời các lệnh CAN qua SocketCAN.
 
 ### 1.2 Mục Tiêu Đào Tạo & Đánh Giá OJT
 Dự án được thiết kế để đánh giá toàn diện năng lực của kỹ sư nhúng từ tầng Low-level phần cứng tới tầng High-level HMI:
-1. **Low-level Platform:** Khả năng cấu hình Device Tree (DTS), Linux Kernel Driver (SPI, Interrupts, Clocks), và SocketCAN framework.
+1. **Low-level Platform:** Khả năng cấu hình Device Tree (DTS), Linux Kernel Driver (SPI, Interrupts, Clocks), và SocketCAN framework trên Target Raspberry Pi.
 2. **Build System & BSP:** Khả năng làm chủ hệ thống Yocto Project, tùy biến layer, image recipe, toolchain cross-compile.
 3. **Application & Framework:** Khả năng lập trình C++ hiện đại, lập trình đa luồng (multi-threading), event loop, Qt5 Core, Qt Multimedia, GStreamer pipeline, và giao tiếp udev hotplug.
 4. **HMI & User Experience:** Xây dựng giao diện QML mượt mà, layout đáp ứng, quản lý trạng thái phát, animation, touch/mouse handling.
-5. **Automotive Networking & Testing:** Kỹ năng phân tích giao thức CAN, thiết kế Database CAN (.dbc), lập trình CAPL, thiết kế Panel CANoe (.xvp) và xây dựng bộ kiểm thử tự động.
+5. **Automotive Networking & Hardware Simulation:** Kỹ năng phân tích giao thức CAN, thiết kế Database CAN (.dbc), lập trình driver TWAI trên vi điều khiển ESP32, xây dựng Web Dashboard HMI thời gian thực và kịch bản kiểm thử tích hợp tự động.
 
 ### 1.3 Ma Trận Đầu Vào (Input) & Đầu Ra (Output)
 
 | Phân loại | Thành phần | Mô tả chi tiết |
 | :--- | :--- | :--- |
-| **Đầu vào (Inputs)** | **Hardware Target** | Raspberry Pi 3/4 / Pi Compute Module (hoặc NXP i.MX6/8) chạy kiến trúc ARM. |
-| | **CAN Hardware** | CAN Controller MCP2515 giao tiếp qua bus SPI + CAN Transceiver (TJA1050 / SN65HVD230) kết nối chân GPIO/SPI của Target. Trở đầu cuối 120Ω. |
+| **Đầu vào (Inputs)** | **Hardware Target** | Raspberry Pi 3/4 / Pi Compute Module (hoặc NXP i.MX6/8) chạy kiến trúc ARM 64-bit. |
+| | **Target CAN Hardware** | CAN Controller MCP2515 giao tiếp qua bus SPI + CAN Transceiver (TJA1050 / SN65HVD230) kết nối chân GPIO/SPI của Target. Trở đầu cuối 120Ω. |
 | | **USB Storage** | USB 2.0/3.0 format FAT32 / exFAT / ext4 chứa các video test định dạng `.mp4`, `.mkv` (video codec H.264, audio AAC/MP3). |
-| | **PC Host / Test Tool** | Máy tính Windows cài đặt Vector CANoe + Vector CAN Interface (VN1610 / VN1630 / CANcaseXL hoặc USB-CAN adapter tương thích). |
+| | **Gateway / Control Node** | **Bo mạch ESP32** (ESP32 DevKit V1 / NodeMCU) + **CAN Transceiver SN65HVD230 (3.3V)** đóng vai trò Gateway ECU / Steering Wheel Switch. |
+| | **Control & HMI Interface** | **Responsive Web Dashboard** (chạy trên Smartphone / Tablet / Laptop qua Wi-Fi Hotspot của ESP32, kết nối WebSocket thời gian thực) + Tùy chọn nút bấm vật lý vô lăng (SWC Pins). Hỗ trợ kiểm thử song song với Vector CANoe / SavvyCAN. |
 | **Đầu ra (Deliverables)** | **CAN Driver (can0)** | Giao diện mạng `can0` SocketCAN hoạt động ổn định ở bitrate 500 kbps, tự khôi phục sau Bus-off. |
 | | **HMI Player (Qt5/QML)** | Ứng dụng chạy trực tiếp trên framebuffer/EGLFS hoặc Wayland, tự động khởi động cùng hệ thống (systemd service). |
 | | **USB Automount & Scan** | Tự động detect khi cắm USB, mount thư mục, quét media đệ quy, tự động nạp playlist và bắt đầu phát. Xử lý an toàn khi rút USB đột ngột. |
-| | **CAN Control & Feedback** | Nhận và xử lý 6 lệnh điều khiển từ CANoe (Play, Pause, Next, Prev, Fast Forward, Backward). Gửi phản hồi trạng thái phát định kỳ 100ms. |
-| | **Tài liệu & Test Package** | File thiết kế DBC, source code đầy đủ, kịch bản CAPL test tự động, tài liệu Build/Deployment, và Test Report có minh chứng log. |
+| | **CAN Control & Feedback** | Nhận và xử lý 6 lệnh điều khiển từ ESP32 Web Dashboard (Play, Pause, Next, Prev, Fast Forward, Backward). Gửi phản hồi trạng thái phát định kỳ 100ms. |
+| | **ESP32 Firmware & Web HMI** | Mã nguồn Firmware ESP32 điều khiển CAN TWAI, Web Server nhúng, Web Dashboard Glassmorphism, và tài liệu hướng dẫn đấu nối. |
+| | **Tài liệu & Test Package** | File thiết kế DBC, source code đầy đủ, kịch bản test tự động, tài liệu Build/Deployment, và Test Report có minh chứng log. |
 
 ---
 
@@ -61,21 +63,31 @@ Dự án được thiết kế để đánh giá toàn diện năng lực của 
 
 ```
 +-----------------------------------------------------------------------------------+
-|                           TEST & VEHICLE SIMULATION TIER                          |
+|               SIMULATION & VEHICLE GATEWAY TIER (ESP32 & WEB DASHBOARD)           |
 |                                                                                   |
 |   +------------------------------------+   +----------------------------------+   |
-|   |         CANoe Graphic Panel        |   |         CAPL Test Engine         |   |
-|   |  - Play / Pause / Seek Controls    |   |  - Protocol Encoding / Decoding  |   |
-|   |  - Status Gauges & Error LEDs      |   |  - Rolling Counter & CRC Check   |   |
+|   |  Responsive Web HMI Dashboard      |   |  Physical Controls (Optional)    |   |
+|   |  (Phone / Tablet / PC Browser)     |   |  - Steering Wheel Pushbuttons    |   |
+|   |  - Play / Pause / Seek Controls    |   |  - Rotary Encoder Volume/Track   |   |
+|   |  - Real-time Gauges & CAN Sniffer  |   |                                  |   |
 |   +-----------------+------------------+   +-----------------+----------------+   |
-|                     |                                        |                    |
+|                     | Wi-Fi (WebSockets / HTTP REST)         | GPIO Interrupts    |
 |                     +-------------------+--------------------+                    |
 |                                         |                                         |
-|                           [Vector CAN Hardware Interface]                         |
+|                     +-------------------v--------------------+                    |
+|                     | ESP32 SoC (TWAI / CAN Controller Node) |                    |
+|                     | - FreeRTOS Multi-Tasking Architecture  |                    |
+|                     | - TWAI Driver @ 500 kbps (ISO 11898-1) |                    |
+|                     | - Auto CRC & Rolling Counter Packing   |                    |
+|                     | - CAN ID 0x101 Telemetry Broadcaster   |                    |
+|                     +-------------------+--------------------+                    |
+|                                         |                                         |
+|                     [SN65HVD230 3.3V CAN Transceiver Module]                      |
 +-----------------------------------------|-----------------------------------------+
                                           |
                                CAN Physical Bus (ISO 11898-2, 500 kbps)
                                120 Ohm Termination Resistors at both ends
+                               Common GND between ESP32 and Target
                                           |
 +-----------------------------------------|-----------------------------------------+
 |                                LINUX TARGET TIER                                  |
@@ -139,21 +151,27 @@ Dự án được thiết kế để đánh giá toàn diện năng lực của 
 6. Cập nhật danh sách vào `PlaylistModel` (C++ `QAbstractListModel`), tự động highlight video đầu tiên và chuyển trạng thái sang `READY` hoặc tự động `PLAY`.
 7. Khi rút USB đột ngột: udev kích hoạt sự kiện `remove`, `UsbMonitor` phát hiện unmount, lập tức ngắt pipeline phát của `QMediaPlayer`, reset `PlaylistModel`, hiển thị cảnh báo "USB Disconnected" trên QML và phát tán cờ `USB_ERROR` qua CAN ID `0x101`.
 
-#### B. Luồng Nhận Lệnh Điều Khiển Từ CANoe (CAN Command Flow)
-1. Người dùng bấm nút trên CANoe Panel (ví dụ: Nút "Play" hoặc "Fast Forward").
-2. CAPL script đóng gói frame CAN ID `0x100`, tăng `Rolling Counter`, tính toán `Checksum` và đẩy ra CAN Bus qua Vector Interface.
-3. Controller MCP2515 nhận frame, kích hoạt chân ngắt INT nối vào GPIO của Raspberry Pi.
-4. Linux Kernel Driver `mcp251x` đọc dữ liệu qua bus SPI, chuyển thành struct `can_frame` trong tầng SocketCAN.
-5. Luồng `CanService` của ứng dụng C++ đang lắng nghe trên socket `PF_CAN` (hoặc `QCanBus`) nhận frame.
-6. `CanService` kiểm tra tính hợp lệ của frame: Kiểm tra Checksum và Rolling Counter. Nếu hợp lệ, giải mã Byte 0 và Byte 1, gọi hàm xử lý tương ứng trên `PlayerController` (`play()`, `pause()`, `seekForward()`).
-7. `PlayerController` tác động vào `QMediaPlayer`, cập nhật vị trí video, đồng thời phát tín hiệu `Q_PROPERTY` cập nhật giao diện QML.
+#### B. Luồng Nhận Lệnh Điều Khiển Từ ESP32 Web Dashboard (CAN Command Flow)
+1. Người dùng bấm nút trên Web Dashboard (trên smartphone/laptop qua Wi-Fi) hoặc bấm phím cứng vô lăng (SWC Pin) nối vào ESP32.
+2. Web Dashboard gửi event WebSocket dạng JSON (ví dụ: `{"cmd": "PLAY"}` hoặc `{"cmd": "SEEK_FWD", "val": 10}`) tới ESP32.
+3. Firmware ESP32 tiếp nhận, tăng `Rolling Counter (0..15)`, tính toán `Checksum` modulo 256 theo đúng công thức đặc tả CAN DBC, đóng gói frame CAN ID `0x100`.
+4. Bộ điều khiển phần cứng TWAI của ESP32 phát frame ra đường truyền vi sai qua transceiver SN65HVD230 ở bitrate 500 kbps.
+5. Controller MCP2515 trên Target Raspberry Pi nhận frame, kích hoạt chân ngắt INT nối vào GPIO.
+6. Linux Kernel Driver `mcp251x` đọc dữ liệu qua bus SPI, chuyển thành struct `can_frame` trong tầng SocketCAN.
+7. Luồng `CanService` của ứng dụng C++ đang lắng nghe trên socket `PF_CAN` (hoặc `QCanBus`) nhận frame.
+8. `CanService` kiểm tra tính toàn vẹn: Xác thực Checksum và Rolling Counter. Nếu hợp lệ, giải mã Byte 0 và Byte 1, gọi hàm xử lý tương ứng trên `PlayerController` (`play()`, `pause()`, `seekForward()`).
+9. `PlayerController` tác động vào `QMediaPlayer`, cập nhật vị trí video, đồng thời phát tín hiệu `Q_PROPERTY` cập nhật giao diện QML.
 
-#### C. Luồng Phản Hồi Trạng Thái Về CANoe (CAN Status Feedback Flow)
-1. Bộ đếm định thời Timer (100ms) trong `CanService` kích hoạt chu kỳ truyền.
+#### C. Luồng Phản Hồi Trạng Thái Về ESP32 Web Dashboard (CAN Status Feedback Flow)
+1. Bộ đếm định thời Timer (100ms) trong `CanService` trên Target Raspberry Pi kích hoạt chu kỳ truyền.
 2. `PlayerController` trích xuất thông tin hiện thời: Trạng thái phát (Playing/Paused/Stopped), Vị trí hiện tại (Current Time), Tổng thời lượng (Total Duration), Mã lỗi, Trạng thái USB.
-3. Đóng gói dữ liệu thành frame CAN ID `0x101`, tăng Rolling Counter của Status Frame.
+3. Đóng gói dữ liệu thành frame CAN ID `0x101`, tăng Alive Counter của Status Frame.
 4. Ghi frame vào SocketCAN thông qua lời gọi `write(sock, &frame, sizeof(frame))`.
-5. CANoe nhận frame `0x101`, CAPL script giải mã và hiển thị trực tiếp lên CANoe Graphic Panel (thanh tiến trình video chạy theo thời gian thực, đèn LED trạng thái bật/tắt).
+5. Transceiver SN65HVD230 và bộ điều khiển TWAI của ESP32 nhận frame qua ngắt phần cứng.
+6. Firmware ESP32 unpack frame `0x101`, chuyển đổi các trường dữ liệu thành gói tin JSON Telemetry:
+   `{"state":1,"curTime":145,"totalTime":320,"usb":2,"alive":77}`
+7. ESP32 phát tán (broadcast) gói tin qua WebSocket tới toàn bộ các client Web Dashboard đang mở.
+8. Web Dashboard cập nhật mượt mà thanh tiến trình video, đồng hồ hiển thị (`02:25 / 05:20`), đèn LED trạng thái phát và đèn báo USB theo thời gian thực (độ trễ < 10ms).
 
 ---
 
@@ -668,10 +686,10 @@ Giao diện được thiết kế theo chuẩn màn hình trung tâm ô tô (t�
 
 ### 7.1 Cấu Trúc Frame CAN ID 0x100: Lệnh Điều Khiển (COMMAND)
 - **Tên Message:** `CMD_VideoPlayer`
-- **Người gửi (Transmitter):** CANoe / Vehicle Gateway
+- **Người gửi (Transmitter):** ESP32 CAN Gateway / CANoe
 - **Người nhận (Receiver):** Linux IVI Target (`can0`)
 - **DLC:** 8 bytes
-- **Chu kỳ truyền:** Event-triggered (khi người dùng bấm) hoặc lặp lại chu kỳ 50ms khi đang giữ nút Fast Forward/Rewind.
+- **Chu kỳ truyền:** Event-triggered (khi người dùng bấm trên Web Dashboard / phím SWC) hoặc lặp lại chu kỳ 50ms khi đang giữ nút Fast Forward/Rewind.
 
 | Byte Offset | Tên trường (Signal Name) | Kiểu dữ liệu | Giá trị & Ý nghĩa kỹ thuật |
 | :---: | :--- | :---: | :--- |
@@ -685,7 +703,7 @@ Giao diện được thiết kế theo chuẩn màn hình trung tâm ô tô (t�
 ### 7.2 Cấu Trúc Frame CAN ID 0x101: Phản Hồi Trạng Thái (STATUS)
 - **Tên Message:** `STAT_VideoPlayer`
 - **Người gửi (Transmitter):** Linux IVI Target (`can0`)
-- **Người nhận (Receiver):** CANoe / Display Cluster
+- **Người nhận (Receiver):** ESP32 CAN Gateway / Web Dashboard / CANoe / Display Cluster
 - **DLC:** 8 bytes
 - **Chu kỳ truyền:** Định kỳ đều đặn **100 ms** (Cyclic Transmission).
 
@@ -760,140 +778,325 @@ VAL_ 257 Playback_State 0 "Stopped" 1 "Playing" 2 "Paused" 3 "Error" ;
 
 ---
 
-## 8. MÔ PHỎNG & KIỂM THỬ BẰNG VECTOR CANOE & CAPL SCRIPT
+## 8. MÔ PHỎNG & ĐIỀU KHIỂN BẰNG ESP32 CAN GATEWAY & WEB DASHBOARD (ESP32 AUTOMOTIVE SIMULATOR)
 
-### 8.1 Thiết Kế Giao Diện CANoe Panel (`VideoPlayer_Control.xvp`)
-Giao diện điều khiển trên CANoe Panel bố trí trực quan:
-- **Button Controls:**
-  - `btnPlay`: Gửi lệnh `Command_ID = 0x01`
-  - `btnPause`: Gửi lệnh `Command_ID = 0x02`
-  - `btnNext`: Gửi lệnh `Command_ID = 0x03`
-  - `btnPrev`: Gửi lệnh `Command_ID = 0x04`
-  - `btnFastForward`: Gửi lệnh `Seek_Command = 0x05`, `Seek_Step = 10s`
-  - `btnRewind`: Gửi lệnh `Seek_Command = 0x06`, `Seek_Step = 10s`
-- **Hiển Thị & Đồng Hồ Đo:**
-  - `progressBarVideo`: Thanh hiển thị tiến trình (tính toán dựa trên $Current\_Play\_Time / Total\_Duration$).
-  - `lblTime`: Hiển thị dạng chữ `01:45 / 04:20`.
-  - `ledPlaybackState`: Đèn trạng thái (Xanh lá: Playing, Vàng: Paused, Đỏ: Error).
-  - `ledUsbStatus`: Đèn báo USB (Xanh: Ready, Xám: Disconnected).
+### 8.1 Tổng Quan Giải Pháp ESP32 Hardware Gateway Simulator & Đánh Giá Kỹ Thuật
 
-### 8.2 Mã Nguồn CAPL Mô Phỏng & Kiểm Thử Tự Động (`VideoPlayer_Test.can`)
+Trong quá trình phát triển và kiểm thử hệ thống IVI ô tô, việc giả lập các hộp điều khiển trên xe (Gateway ECU, Body Control Module, Steering Wheel Switch) là yêu cầu bắt buộc. Tuy nhiên, giải pháp sử dụng **Vector CANoe** thương mại thường gặp phải nhiều rào cản thực tế:
+- **Chi phí bản quyền và phần cứng:** License CANoe kèm card giao tiếp Vector (VN1610, VN1630) có chi phí hàng chục nghìn USD, thường chỉ sẵn có tại các trung tâm R&D chuyên dụng.
+- **Tính cơ động và phụ thuộc nền tảng:** Đòi hỏi máy trạm Windows cấu hình cao kết nối cáp vật lý và USB Dongle bản quyền, khó khăn khi cần mang đi demo lưu động, đào tạo nhóm OJT hoặc làm việc phân tán.
 
-```c
-/*@!Encoding:1252*/
-includes {
+**Giải pháp đột phá: Thiết kế ESP32 Automotive CAN Gateway Simulator độc lập:**
+Dự án thay thế / bổ trợ phần mô phỏng bằng một bo mạch vi điều khiển nhúng **ESP32** (ESP-WROOM-32 / DevKit V1) kết hợp module thu phát **CAN Transceiver SN65HVD230 (3.3V)**:
+1. **Ngoại vi phần cứng TWAI (Two-Wire Automotive Interface):** ESP32 tích hợp sẵn bộ điều khiển CAN Controller tương thích ISO 11898-1 (CAN 2.0B Active), hoạt động mượt mà ở tốc độ chuẩn **500 kbps**.
+2. **Embedded Web Dashboard qua Wi-Fi & WebSockets (Không cần cài App):** ESP32 phát Wi-Fi Access Point (SoftAP). Bất kỳ điện thoại thông minh (iOS/Android), máy tính bảng hay laptop nào chỉ cần kết nối Wi-Fi và mở trình duyệt web là có ngay một **Bảng điều khiển Vô lăng ảo (Virtual Steering Wheel Dashboard)** cực kỳ hiện đại với độ trễ truyền thông dưới **10ms**.
+3. **Phản hồi trạng thái thời gian thực (Bidirectional Telemetry):** Không chỉ gửi lệnh điều khiển (ID `0x100`), ESP32 liên tục lắng nghe frame phản hồi từ Linux Target (ID `0x101`) qua ngắt TWAI, giải mã và hiển thị trực tiếp lên Web Dashboard: Thanh thời gian phát, đèn LED trạng thái (Playing, Paused, Stopped), đèn cảnh báo USB và bộ đếm Heartbeat.
+4. **Hỗ trợ phím cứng vô lăng (Physical SWC - Steering Wheel Controls):** Cho phép đấu nối thêm 3-5 nút bấm cơ học vào chân GPIO của ESP32 để bấm trực tiếp như nút trên vô lăng thực tế.
+5. **Duy trì 100% tính tương thích tiêu chuẩn ô tô:** Mạng CAN vật lý hoàn toàn tuân thủ ISO 11898-2 và file Database `VideoPlayer_CAN.dbc`. Nếu phòng Lab có sẵn Vector CANoe hoặc USB-CAN Adapter (SavvyCAN), thiết bị này vẫn có thể cắm song song vào bus để giám sát (bus monitor/trace sniffer) mà không gây bất kỳ xung đột nào.
+
+---
+
+### 8.2 Thiết Kế Phần Cứng & Sơ Đồ Đấu Dây (Hardware Schematic & Pinout)
+
+#### A. Danh Mục Phần Cứng Cần Thiết (BOM)
+- **1x Bo mạch ESP32:** ESP32 DevKit V1 (30 chân hoặc 38 chân, chip ESP-WROOM-32).
+- **1x Module CAN Transceiver:** **SN65HVD230 / VP230** (hoạt động ở điện áp logic **3.3V**, hoàn toàn tương thích và an toàn tuyệt đối với chân GPIO của ESP32, không cần mạch chuyển mức).
+- **1x Cặp dây cáp xoắn đôi (Twisted Pair):** Dùng truyền tín hiệu vi sai `CAN_H` và `CAN_L`.
+- **Dây nối cắm (Jumper Wires) & Breadboard.**
+- *(Tùy chọn)* 3x Phím bấm nút nhấn (Push Buttons) cho chế độ điều khiển cơ học vô lăng.
+
+#### B. Sơ Đồ Đấu Nối Chân Chi Tiết (Wiring Pinout)
+
+| Thiết bị nguồn | Chân nguồn | Thiết bị đích | Chân đích | Ghi chú kỹ thuật |
+| :--- | :--- | :--- | :--- | :--- |
+| **ESP32** | `3V3` | **SN65HVD230** | `3V3` (VCC) | Nguồn nuôi 3.3V cho transceiver. |
+| **ESP32** | `GND` | **SN65HVD230** | `GND` | Nối đất chung. |
+| **ESP32** | `GPIO 5` | **SN65HVD230** | `CTX` (TXD) | TWAI Transmit Data. |
+| **ESP32** | `GPIO 4` | **SN65HVD230** | `CRX` (RXD) | TWAI Receive Data. |
+| **SN65HVD230** | `CAN_H` | **Target MCP2515** | `CAN_H` | Dây tín hiệu vi sai CAN High (xoắn đôi). |
+| **SN65HVD230** | `CAN_L` | **Target MCP2515** | `CAN_L` | Dây tín hiệu vi sai CAN Low (xoắn đôi). |
+| **ESP32** | `GND` | **Raspberry Pi** | `GND` (Pin 6/9/14/20) | **BẮT BUỘC:** Cân bằng mức tham chiếu điện áp đất (Common Ground). |
+| **ESP32** | `GPIO 18` | **Nút Play/Pause** | Chân 1 (Chân 2 nối GND) | Phím cứng SWC (Kích hoạt internal pull-up). |
+| **ESP32** | `GPIO 19` | **Nút Next Track** | Chân 1 (Chân 2 nối GND) | Phím cứng SWC (Kích hoạt internal pull-up). |
+| **ESP32** | `GPIO 23` | **Nút Prev Track** | Chân 1 (Chân 2 nối GND) | Phím cứng SWC (Kích hoạt internal pull-up). |
+
+```
++-----------------------------------------------------------------------------------------+
+|                                    SƠ ĐỒ PHẦN CỨNG CAN BUS                              |
+|                                                                                         |
+|   +-------------------+        +--------------------+                                   |
+|   |   ESP32 DevKit    |        | SN65HVD230 (3.3V)  |                                   |
+|   |                   |        |                    |                                   |
+|   |          3.3V ----+--------+--> 3V3             |                                   |
+|   |           GND ----+--------+--> GND             |                                   |
+|   |     GPIO5(TX) ----+--------+--> CTX             |                                   |
+|   |     GPIO4(RX) ----+--------+--> CRX             |                                   |
+|   |                   |        |                    |                                   |
+|   |        GPIO18 ----+--[BTN1]|                    |                                   |
+|   |        GPIO19 ----+--[BTN2]|    CAN_H ----------+========== CAN_H (Twisted Pair) =+ |
+|   |        GPIO23 ----+--[BTN3]|    CAN_L ----------+========== CAN_L (Twisted Pair) =+ |
+|   +---------+---------+        +----+---------------+                                 | |
+|             |                       | [120 Ohm Jumper]                                | |
+|             |                                                                         | |
+|             +=================== COMMON GROUND WIRE ================================+ | |
+|                                                                                     | | |
+|                                                                                     | | |
+|                                CAN Bus Bitrate: 500 kbps                            | | |
+|                                                                                     | | |
+|   +-------------------+        +--------------------+                               | | |
+|   |   Raspberry Pi    |        |   MCP2515 Module   |                               | | |
+|   |  (Linux Target)   |        |  (TJA1050/SN65HVD) |                               | | |
+|   |                   |        |                    |                               | | |
+|   |        GND (Pin 6)+--------+--> GND <-----------+-------------------------------+ | |
+|   |       3.3V/5V ----+--------+--> VCC             |                                 | |
+|   |     SPI0_MOSI ----+--------+--> SI              |                                 | |
+|   |     SPI0_MISO ----+--------+--> SO              |                                 | |
+|   |     SPI0_SCLK ----+--------+--> SCK             |                                 | |
+|   |     SPI0_CE0# ----+--------+--> CS   CAN_H <----+---------------------------------+ |
+|   |    GPIO25(IRQ)----+--------+--> INT  CAN_L <----+-----------------------------------+
+|   +-------------------+        +----+---------------+
+|                                     | [120 Ohm Jumper]
++-----------------------------------------------------------------------------------------+
+```
+
+> [!IMPORTANT]
+> **2 NGUYÊN TẮC VÀNG KHI ĐẤU DÂY CAN BUS:**
+> 1. **Trở đầu cuối 120Ω (Bus Termination):** Mạng CAN bus bắt buộc phải có trở 120Ω ở 2 điểm xa nhất của đường truyền. Hãy kiểm tra jumper nối trở trên module SN65HVD230 và MCP2515 (thường ghi nhãn `R_120` hoặc `J1/J2`). Tổng trở kháng đo giữa CAN_H và CAN_L khi ngắt nguồn phải xấp xỉ **60Ω**.
+> 2. **Dây nối đất chung (Common Ground):** Tuy tín hiệu CAN là tín hiệu vi sai điện áp, nhưng điện áp chế độ chung (Common-Mode Voltage) phải nằm trong giới hạn cho phép ($-7V$ đến $+12V$). Nếu không nối chung chân GND giữa ESP32 và Raspberry Pi, hiện tượng lệch điện thế đất sẽ gây lỗi khung truyền (`CAN_ERR_CRIT`, Bus-Off liên tục).
+
+---
+
+### 8.3 Kiến Trúc Firmware ESP32 (FreeRTOS Multi-Tasking Architecture)
+
+Firmware trên ESP32 được xây dựng dựa trên kiến trúc thời gian thực đa nhiệm **FreeRTOS**, chia thành 3 tác vụ độc lập chạy song song trên 2 nhân xử lý (Dual-core Xtensa LX6):
+
+```
++---------------------------------------------------------------------------------------+
+|                       KIẾN TRÚC FIRMWARE ESP32 DỰA TRÊN FREERTOS                      |
+|                                                                                       |
+|   [CORE 0: Automotive Communications]            [CORE 1: Web Engine & UI Handling]   |
+|                                                                                       |
+|   +------------------------------------+        +---------------------------------+   |
+|   |        Task_TWAI_Manager           |        |        Task_Web_Server          |   |
+|   |  (Priority: 5 - High Priority)     |        |  (Priority: 3 - Normal Priority)|   |
+|   |                                    |        |                                 |   |
+|   |  - Khởi tạo TWAI driver @ 500kbps  |        |  - Wi-Fi SoftAP: 192.168.4.1    |   |
+|   |  - Lắng nghe ngắt RX (CAN 0x101)   |        |  - AsyncWebServer (Port 80)     |   |
+|   |  - Giải mã Status & Health         |        |  - AsyncWebSocket (/ws)         |   |
+|   |  - Đóng gói frame TX (CAN 0x100)   |        |  - Nhận event click từ Web UI   |   |
+|   |  - Tính toán Rolling Counter & CRC |        |  - Parse JSON & gửi lệnh CAN    |   |
+|   +-----------------+------------------+        +-----------------+---------------+   |
+|                     ^                                             ^                   |
+|                     |             FreeRTOS Queue / Mutex          |                   |
+|                     +=============================================+                   |
+|                                             |                                         |
+|                                 +-----------v---------------------+                   |
+|                                 |        Task_SWC_Button          |                   |
+|                                 |  (Priority: 2 - Low Priority)   |                   |
+|                                 |  - Quét GPIO 18, 19, 23 (Debounce)                  |
+|                                 |  - Bấm nút -> Gửi trực tiếp CMD |                   |
+|                                 +---------------------------------+                   |
++---------------------------------------------------------------------------------------+
+```
+
+#### A. Cơ Chế Đóng Gói Lệnh (CAN ID 0x100 Encoding)
+Mỗi khi có sự kiện từ Web Dashboard hoặc nút bấm SWC, firmware thực thi hàm `sendCanCommand(cmdId, seekCmd, seekVal)`:
+1. Chiếm quyền truy cập an toàn bằng `SemaphoreHandle_t` (Mutex).
+2. Tăng `Rolling Counter`: `g_rolling_counter = (g_rolling_counter + 1) & 0x0F`.
+3. Tính toán Checksum: `checksum = (cmdId + seekCmd + seekVal + g_rolling_counter) & 0xFF`.
+4. Điền struct `twai_message_t` với ID `0x100`, DLC = 8, các byte dữ liệu theo chuẩn DBC.
+5. Gọi hàm `twai_transmit(&msg, pdMS_TO_TICKS(50))` đẩy frame ra bus.
+6. Phát tán sự kiện vừa phát lên WebSocket để hiển thị tức thời trên Live CAN Sniffer của Web Dashboard.
+
+#### B. Cơ Chế Giải Mã Trạng Thái (CAN ID 0x101 Decoding)
+Vòng lặp trong `Task_TWAI_Manager` liên tục đợi frame từ ngắt phần cứng (`twai_receive`):
+1. Khi nhận frame có `identifier == 0x101`:
+   - `state = rx_msg.data[0]` (0: Stopped, 1: Playing, 2: Paused, 3: Error)
+   - `track = rx_msg.data[1]`
+   - `curTime = (rx_msg.data[2] << 8) | rx_msg.data[3]` (Big Endian)
+   - `totalDuration = (rx_msg.data[4] << 8) | rx_msg.data[5]` (Big Endian)
+   - `usbHealth = (rx_msg.data[6] & 0x03)` (0: No USB, 1: Scanning, 2: Ready)
+   - `aliveCounter = rx_msg.data[7]`
+2. Đóng gói dữ liệu thành chuỗi JSON:
+   ```json
+   {"type":"telemetry","state":1,"track":2,"curTime":85,"totalTime":210,"usb":2,"alive":142}
+   ```
+3. Gọi `ws.textAll(jsonBuffer)` đẩy gói tin tới toàn bộ trình duyệt web đang kết nối.
+
+---
+
+### 8.4 Thiết Kế Web Dashboard Điều Khiển (Modern Automotive Dark HMI)
+
+Giao diện Web Dashboard được thiết kế theo phong cách **Dark Automotive Cockpit / Cyberpunk Glassmorphism**, tối ưu hiển thị mượt mà trên cả trình duyệt máy tính và màn hình cảm ứng điện thoại di động:
+
+```
++---------------------------------------------------------------------------------------+
+|  🏎️ FASTTRACK-01 | AUTOMOTIVE CAN GATEWAY SIMULATOR                    [Wi-Fi: 🟢]    |
++---------------------------------------------------------------------------------------+
+|                                                                                       |
+|   +------------------------------------+   +--------------------------------------+   |
+|   |     VEHICLE CLUSTER TELEMETRY      |   |       LIVE CAN TRAFFIC SNIFFER       |   |
+|   +------------------------------------+   +--------------------------------------+   |
+|   |  Trạng thái: [🟢 PLAYING]          |   |  [14:22:05.102] TX 0x100 [8] 01 00 00|   |
+|   |  Thiết bị USB: [🟢 READY - Mounted]|   |                 05 06 00 00 00 (CRC) |   |
+|   |  Video Track: #02 / Song_02.mp4    |   |  [14:22:05.201] RX 0x101 [8] 01 02 00|   |
+|   |  Heartbeat: ❤️ Pulse [Alive: 142]   |   |                 55 00 D2 02 8E       |   |
+|   +------------------------------------+   +--------------------------------------+   |
+|                                                                                       |
+|   TIẾN TRÌNH VIDEO HIỆN THỜI:                                                         |
+|   [ 01:25 ] =====================================o---------------- [ 03:30 ] (40.5%)  |
+|                                                                                       |
+|   +-------------------------------------------------------------------------------+   |
+|   |                 STEERING WHEEL MEDIA CONTROLS (VÔ LĂNG ĐIỀU KHIỂN)            |   |
+|   +-------------------------------------------------------------------------------+   |
+|   |                                                                               |   |
+|   |    [ ⏮ PREV ]   [ ◀◀ -10s ]   [ ▶ PLAY / ⏸ PAUSE ]   [ ▶▶ +10s ]   [ ⏭ NEXT ] |   |
+|   |                                                                               |   |
+|   +-------------------------------------------------------------------------------+   |
+|                                                                                       |
+|   TỰ ĐỘNG HÓA KIỂM THỬ:                                                               |
+|   [ 🚀 RUN AUTOMATED SMOKE TEST (Play -> FF -> Next -> Pause Routine) ]               |
+|                                                                                       |
++---------------------------------------------------------------------------------------+
+```
+
+#### Các Tính Năng Nổi Bật Của Web Dashboard:
+1. **Zero-Installation & Zero-Configuration:** Toàn bộ mã HTML, CSS và JavaScript được nhúng trực tiếp trong bộ nhớ Flash của ESP32. Chỉ cần kết nối Wi-Fi `ESP32-CAN-GATEWAY` (mật khẩu mặc định: `12345678`) và truy cập `http://192.168.4.1`.
+2. **Interactive Seek Slider:** Cho phép kéo thả thanh trượt tiến trình trực tiếp trên màn hình cảm ứng để gửi lệnh tua video với bước nhảy mong muốn.
+3. **Automated Smoke Test Engine:** Tích hợp sẵn nút bấm kịch bản tự động hóa, mô phỏng chu trình kiểm thử CAPL trên CANoe (Play $\to$ chờ 2s $\to$ Seek 10s $\to$ Next bài $\to$ Pause) và hiển thị kết quả PASS/FAIL trực tiếp.
+4. **Live Packet Inspector:** Hiển thị trực quan từng byte hex của frame CAN, giúp các kỹ sư OJT và người đánh giá kiểm tra ngay tính đúng đắn của thuật toán tính Checksum và Rolling Counter.
+
+---
+
+### 8.5 Cấu Trúc Bộ Mã Nguồn Phân Tách (Modular Architecture & Source Guide)
+
+Để đảm bảo chuẩn kỹ thuật công nghiệp (Clean Architecture) và thuận tiện trong việc phát triển/kiểm thử độc lập, toàn bộ mã nguồn của phân hệ ESP32 CAN Gateway được phân tách thành **2 bộ phận riêng biệt**:
+1. **🌐 Bộ Giao Diện Web HMI Độc Lập (`Hardware_Gateway_ESP32/web_dashboard/`):** Chứa các file tĩnh `index.html`, `style.css`, `app.js`. Có thể mở trực tiếp trên máy tính để chạy chế độ **Mock Simulation** mà không cần nạp chip.
+2. **⚡ Bộ Firmware C++ Hướng Đối Tượng (`Hardware_Gateway_ESP32/firmware/`):** Phân chia module rõ ràng theo từng phân hệ chức năng: `TwaiManager`, `WebServerManager`, `SwcButtonManager`, `CanProtocol`, `Config`, và `main.cpp` tinh gọn.
+
+```
+Hardware_Gateway_ESP32/
+├── README.md                          # Tài liệu hướng dẫn chi tiết A-Z
+├── docs/
+│   └── pinout_schematic.md            # Sơ đồ nguyên lý đấu dây chi tiết
+├── web_dashboard/                     # [FRONTEND] Giao diện Web HMI chạy độc lập trên PC
+│   ├── index.html                     # Cấu trúc HTML5 ngữ nghĩa Cockpit
+│   ├── style.css                      # Giao diện Dark Automotive Glassmorphism
+│   └── app.js                         # WebSocket client & Mock Simulation logic
+└── firmware/                          # [BACKEND] Mã nguồn C++ nạp vào ESP32
+    ├── platformio.ini                 # Cấu hình PlatformIO & LittleFS
+    ├── data/                          # Thư mục filesystem nạp vào Flash (uploadfs)
+    │   ├── index.html / style.css / app.js
+    ├── include/
+    │   ├── Config.h                   # Định nghĩa Pin GPIO, CAN Bitrate, Wi-Fi
+    │   ├── CanProtocol.h              # Struct Frame 0x100, 0x101, Checksum & Counter
+    │   ├── TwaiManager.h              # Driver ngoại vi CAN TWAI
+    │   ├── WebServerManager.h         # Wi-Fi SoftAP, Web Server & WebSocket
+    │   ├── SwcButtonManager.h         # Phím bấm vô lăng vật lý (SWC)
+    │   └── WebAssets.h                # Giao diện dự phòng nhúng trực tiếp trong Flash
+    └── src/
+        ├── TwaiManager.cpp            # Ngắt TWAI RX/TX đa nhiệm FreeRTOS
+        ├── WebServerManager.cpp       # Xử lý WebSockets & JSON telemetry
+        ├── SwcButtonManager.cpp       # Quét phím và chống rung phím (Debounce)
+        └── main.cpp                   # Entry point tinh gọn (~50 dòng code)
+```
+
+#### A. Mã Nguồn Entry Point Tinh Gọn (`firmware/src/main.cpp`)
+File `main.cpp` chỉ đóng vai trò nhạc trưởng khởi tạo và kết nối dữ liệu giữa các module thông qua callback lambda, loại bỏ hoàn toàn việc nhúng mã HTML/CSS/JS cồng kềnh:
+
+```cpp
+#include <Arduino.h>
+#include "Config.h"
+#include "CanProtocol.h"
+#include "TwaiManager.h"
+#include "WebServerManager.h"
+#include "SwcButtonManager.h"
+
+void setup() {
+    Serial.begin(SERIAL_MONITOR_BAUD);
+    delay(500);
+
+    // 1. Khởi tạo ngoại vi CAN TWAI (500 kbps, Task ngắt RX Core 0)
+    TwaiManager &can = TwaiManager::getInstance();
+    can.begin();
+
+    // 2. Khởi tạo Wi-Fi SoftAP, LittleFS và Web Server / WebSocket
+    WebServerManager &web = WebServerManager::getInstance();
+    web.begin();
+
+    // 3. Khởi tạo cụm nút bấm cơ học vô lăng (SWC Pins, Task quét phím Core 1)
+    SwcButtonManager &swc = SwcButtonManager::getInstance();
+    swc.begin();
+
+    // 4. Liên kết Callback giữa các phân hệ:
+    // (A) Khi CAN nhận telemetry 0x101 -> Đẩy lên Web UI & cập nhật SWC
+    can.setTelemetryCallback([&web, &swc](const CanStatusPacket &stat) {
+        web.broadcastTelemetry(stat);
+        swc.updatePlaybackState(stat.playbackState);
+    });
+
+    // (B) Khi CAN phát sinh log TX / RX -> Đẩy lên Live Sniffer trên Web UI
+    can.setLogCallback([&web](const char* logMsg, bool isTx) {
+        web.broadcastLog(logMsg, isTx);
+    });
+
+    // (C) Khi người dùng bấm nút trên Web Dashboard -> Gửi frame CAN ID 0x100
+    web.setCommandCallback([&can](uint8_t cmd, uint8_t seek, uint8_t val) {
+        can.sendCommand(cmd, seek, val);
+    });
+
+    // (D) Khi người dùng bấm phím cứng vô lăng -> Gửi frame CAN ID 0x100
+    swc.setActionCallback([&can](uint8_t cmd, uint8_t seek, uint8_t val) {
+        can.sendCommand(cmd, seek, val);
+    });
+
+    Serial.println("[SYSTEM] Hệ thống Gateway sẵn sàng!");
 }
 
-variables {
-  message CMD_VideoPlayer msgCmd;
-  byte gCmdCounter = 0;
-  msTimer timerStatusMonitor;
-  int gExpectedState = 0;
-}
-
-on start {
-  write("[CANoe CAPL] Khoi tao Engine kiem thu Video Player...");
-  setTimer(timerStatusMonitor, 500);
-}
-
-/* Ham phu tro tinh toan Checksum va Rolling Counter */
-void SendPlayerCommand(byte cmdId, byte seekCmd, byte seekVal) {
-  byte chksum;
-  
-  msgCmd.Command_ID = cmdId;
-  msgCmd.Seek_Command = seekCmd;
-  msgCmd.Seek_Step_Value = seekVal;
-  
-  gCmdCounter = (gCmdCounter + 1) & 0x0F;
-  msgCmd.Cmd_Rolling_Counter = gCmdCounter;
-  
-  // Tinh checksum: Sum cac byte mod 256
-  chksum = (cmdId + seekCmd + seekVal + gCmdCounter) & 0xFF;
-  msgCmd.Cmd_Checksum = chksum;
-  
-  output(msgCmd);
-  write("[CANoe CAPL] Gui lenh: Cmd=%d, Seek=%d, Counter=%d", cmdId, seekCmd, gCmdCounter);
-}
-
-/* Xu ly su kien nut bam tren Graphic Panel */
-on envVar evBtnPlay {
-  if (getValue(this) == 1) {
-    SendPlayerCommand(0x01, 0x00, 0); // Play
-  }
-}
-
-on envVar evBtnPause {
-  if (getValue(this) == 1) {
-    SendPlayerCommand(0x02, 0x00, 0); // Pause
-  }
-}
-
-on envVar evBtnNext {
-  if (getValue(this) == 1) {
-    SendPlayerCommand(0x03, 0x00, 0); // Next
-  }
-}
-
-on envVar evBtnPrev {
-  if (getValue(this) == 1) {
-    SendPlayerCommand(0x04, 0x00, 0); // Prev
-  }
-}
-
-on envVar evBtnFastForward {
-  if (getValue(this) == 1) {
-    SendPlayerCommand(0x00, 0x05, 10); // FF 10s
-  }
-}
-
-on envVar evBtnRewind {
-  if (getValue(this) == 1) {
-    SendPlayerCommand(0x00, 0x06, 10); // Rewind 10s
-  }
-}
-
-/* Nhan va kiem tra Status tu Target */
-on message STAT_VideoPlayer {
-  byte state;
-  word curTime, totalTime;
-  
-  state = this.Playback_State;
-  curTime = this.Current_Play_Time;
-  totalTime = this.Total_Duration;
-  
-  // Cap nhat bien moi truong len Panel
-  putValue(evPlaybackStateLed, state);
-  putValue(evCurTimeVal, curTime);
-  putValue(evTotalTimeVal, totalTime);
-  
-  if (totalTime > 0) {
-    putValue(evProgressBar, (curTime * 100) / totalTime);
-  }
-}
-
-/* Kich ban Test Tu Dong (Automated Test Routine) */
-testcase TC_Verify_Play_Pause_Cycle() {
-  testCaseComment("Kiem tra chu trinh Play -> Cho 2 giay -> Pause -> Kiem tra Status");
-  
-  SendPlayerCommand(0x01, 0x00, 0); // Play
-  testWaitForTimeout(2000);
-  
-  if (getSignal(STAT_VideoPlayer::Playback_State) == 1) {
-    testStepPass("Target da chuyen sang trang thai PLAYING dung nhu mong doi");
-  } else {
-    testStepFail("Target khong phan hoi dung trang thai PLAYING");
-  }
-
-  SendPlayerCommand(0x02, 0x00, 0); // Pause
-  testWaitForTimeout(1000);
-  
-  if (getSignal(STAT_VideoPlayer::Playback_State) == 2) {
-    testStepPass("Target da dung video khi nhan lenh PAUSE");
-  } else {
-    testStepFail("Target khong chuyen sang trang thai PAUSED");
-  }
+void loop() {
+    WebServerManager::getInstance().update();
+    vTaskDelay(pdMS_TO_TICKS(100));
 }
 ```
+
+#### B. Quy Trình Nạp Code & Chạy Hệ Thống
+1. **Kiểm tra giao diện trước trên PC:** Mở trực tiếp [Hardware_Gateway_ESP32/web_dashboard/index.html](file:///d:/04_PROJECT/FastTrack01/Hardware_Gateway_ESP32/web_dashboard/index.html) bằng trình duyệt để xem trước giao diện và chạy kịch bản Mock Test.
+2. **Biên dịch & Nạp Firmware:** Mở thư mục `Hardware_Gateway_ESP32/firmware` trong VS Code PlatformIO, chạy:
+   ```bash
+   pio run --target upload
+   ```
+3. **Nạp Giao Diện Vào LittleFS Flash (Tùy chọn):**
+   ```bash
+   pio run --target uploadfs
+   ```
+   *(Hệ thống hỗ trợ cơ chế kép: Nếu LittleFS chưa được nạp, firmware tự động chuyển sang trang dự phòng từ `WebAssets.h`, đảm bảo không bao giờ bị lỗi 404).*
+4. **Vận hành:** Kết nối Wi-Fi `ESP32-CAN-GATEWAY` (mật khẩu: `12345678`), mở trình duyệt truy cập `http://192.168.4.1` để điều khiển. Chi tiết xem tại [Hardware_Gateway_ESP32/README.md](file:///d:/04_PROJECT/FastTrack01/Hardware_Gateway_ESP32/README.md).
+
+---
+
+### 8.6 Kiểm Thử Song Song & Mở Rộng Với CANoe / SavvyCAN / python-can
+
+Mặc dù ESP32 đảm nhiệm trọn vẹn vai trò phát lệnh và thu thập phản hồi, trong môi trường kiểm chuẩn chuyên nghiệp của các hãng xe (OEM/Tier-1), ta có thể kết nối thêm thiết bị phân tích bus để kiểm tra độc lập:
+
+#### A. Mô Hình Đo Kiểm Song Song (Multi-Node Bus Topology)
+Mạng CAN bus là mạng đa điểm (Multi-drop Bus). Ta chỉ việc nối thêm một node thứ 3 vào cặp dây vi sai:
+
+```
+[ ESP32 Gateway Node ] <==================== CAN BUS (500 kbps) ====================> [ Raspberry Pi Target ]
+                                  ||
+                                  || (Đấu song song CAN_H / CAN_L / GND)
+                                  \/
+                   [ Vector VN1610 / VN1630 (CANoe) ]
+                                  HOẶC
+                   [ USB-CAN Adapter (SavvyCAN / python-can) ]
+```
+
+#### B. Sử Dụng File DBC Trên Vector CANoe / SavvyCAN
+1. Mở file [VideoPlayer_CAN.dbc](file:///d:/04_PROJECT/FastTrack01/CANoe_Simulation/Database/VideoPlayer_CAN.dbc) trong **CANdb++ Editor** hoặc load trực tiếp vào cửa sổ Trace của Vector CANoe / SavvyCAN.
+2. Khi người dùng bấm nút trên ESP32 Web Dashboard:
+   - Cửa sổ Trace trên CANoe sẽ hiển thị frame `CMD_VideoPlayer (0x100)` với các tín hiệu được giải mã trực tiếp: `Command_ID`, `Seek_Command`, `Cmd_Rolling_Counter`, `Cmd_Checksum`.
+   - Cửa sổ Trace trên CANoe đồng thời hiển thị frame định kỳ 100ms `STAT_VideoPlayer (0x101)` từ Target.
+3. Kỹ sư kiểm thử có thể sử dụng CANoe để thực hiện **Stress Test** (bơm lỗi CRC, giả lập Bus-off) để kiểm tra độ tin cậy của cả ESP32 lẫn Raspberry Pi Target.
 
 ---
 
@@ -973,7 +1176,18 @@ FastTrack01/
 │       └── styles/
 │           └── Theme.qml                         # Bảng màu Dark Automotive UI, Fonts
 │
-├── CANoe_Simulation/                              # Dự án kiểm thử Vector CANoe
+├── Hardware_Gateway_ESP32/                        # Phân hệ giả lập Gateway & Web HMI trên ESP32
+│   ├── firmware/                                  # Mã nguồn PlatformIO / Arduino C++
+│   │   ├── src/main.cpp                          # Source code chính TWAI + WebSocket + WebServer
+│   │   └── platformio.ini                        # Cấu hình môi trường build ESP32
+│   ├── web_dashboard/                             # Mã nguồn Web Dashboard độc lập (HTML/CSS/JS)
+│   │   ├── index.html                            # Giao diện HMI Dark Automotive Glassmorphism
+│   │   ├── style.css                             # CSS responsive cho Mobile & Desktop
+│   │   └── app.js                                # Logic WebSocket & đồng bộ thời gian thực
+│   └── docs/                                      # Tài liệu phần cứng & sơ đồ nối dây
+│       └── pinout_schematic.md                    # Hướng dẫn đấu nối ESP32 <-> SN65HVD230 <-> RPi
+│
+├── CANoe_Simulation/                              # Dự án kiểm thử Vector CANoe (Dự phòng / Bench Test)
 │   ├── Database/                                  # Cơ sở dữ liệu truyền thông
 │   │   └── VideoPlayer_CAN.dbc                   # File DBC chuẩn CAN ID 0x100, 0x101
 │   ├── Panels/                                    # Giao diện Graphic Panels
@@ -1006,14 +1220,14 @@ FastTrack01/
 +---------------------------------------------------------------------------------------+
 |                                    OJT TEAM (3 ROLES)                                 |
 +-----------------------------------+-----------------------------------+---------------+
-|       OJT 1: PLATFORM ENGINEER    |    OJT 2: APPLICATION ENGINEER    |  OJT 3: HMI & TEST ENGINEER   |
+|       OJT 1: PLATFORM ENGINEER    |    OJT 2: APPLICATION ENGINEER    | OJT 3: HMI, GATEWAY & TEST    |
 +-----------------------------------+-----------------------------------+---------------+
 | - Kernel Config, DTS Overlay      | - C++ Backend Architecture        | - QML UI/UX Component Design  |
 | - SPI & MCP2515 Driver bring-up   | - SocketCAN Worker Thread         | - Automotive Theme & Layout   |
-| - SocketCAN setup scripts & daemon| - udev Hotplug & Recursive Scan   | - Vector DBC Specification    |
-| - Yocto Image & Toolchain build   | - Player State Machine Controller | - CANoe Panel (.xvp) Design   |
-| - GStreamer HW/SW Pipeline config | - QtMultimedia Backend Binding    | - CAPL Test Scripts & Tests   |
-| - Systemd Auto-launch integration | - Memory Leak & Performance Profil| - Test Report & Demo Delivery |
+| - SocketCAN setup scripts & daemon| - udev Hotplug & Recursive Scan   | - ESP32 TWAI Driver Firmware  |
+| - Yocto Image & Toolchain build   | - Player State Machine Controller | - Responsive Web Dashboard HMI|
+| - GStreamer HW/SW Pipeline config | - QtMultimedia Backend Binding    | - Vector DBC Specification    |
+| - Systemd Auto-launch integration | - Memory Leak & Performance Profil| - Test Scripts & Demo Delivery|
 +-----------------------------------+-----------------------------------+---------------+
 | [TRÁCH NHIỆM CHUNG]: Kiến trúc tích hợp • Code Review chéo • Báo cáo tiến độ tuần     |
 +---------------------------------------------------------------------------------------+
@@ -1022,27 +1236,28 @@ FastTrack01/
 ### 10.2 Kế Hoạch Triển Khai 4 Tuần (Sprint Roadmap)
 
 - **Tuần 1: Setup Môi Trường & Bring-up Nền Tảng (Platform & Toolchain)**
-  - OJT 1: Build Yocto Kirkstone thành công; Nạp DTS overlay; Bring-up `can0` ở 500kbps; Test `candump`/`cansend` với loopback/CANoe.
-  - OJT 2: Khởi tạo repo C++; Viết lớp SocketCAN raw đọc nhận frame ID 0x100; Viết mock code quét thư mục local.
-  - OJT 3: Soạn thảo DBC file hoàn chỉnh; Tạo layout cơ bản CANoe Panel; Thiết kế wireframe giao diện QML.
-  - **Milestone 1:** `can0` thông suốt, CANoe gửi frame, Target in ra terminal qua `candump`.
+  - OJT 1: Build Yocto Kirkstone thành công; Nạp DTS overlay; Bring-up `can0` ở 500kbps trên Raspberry Pi; Test `candump`/`cansend`.
+  - OJT 2: Khởi tạo repo C++; Viết lớp SocketCAN raw đọc nhận frame ID 0x100; Viết mock code quét thư mục media local.
+  - OJT 3: Soạn thảo DBC file hoàn chỉnh; Flash firmware TWAI cơ bản lên ESP32; Dựng layout Web Dashboard và wireframe giao diện QML.
+  - **Milestone 1:** `can0` thông suốt, ESP32 gửi frame ID 0x100 qua CAN bus, Target Raspberry Pi in ra terminal qua `candump can0`.
 
 - **Tuần 2: Phát Triển Core Application & Media Stack**
   - OJT 1: Tích hợp GStreamer plugins và Qt5 vào image Yocto; Đo kiểm hiệu năng phát MP4 qua lệnh `gst-launch-1.0`.
   - OJT 2: Hoàn thiện `UsbMonitor` bằng `libudev`; Cài đặt `PlaylistModel`; Viết `PlayerController` quản lý Play/Pause/Seek.
-  - OJT 3: Dựng giao diện QML hoàn chỉnh (VideoOutput, Playlist, Thanh điều khiển); Viết hàm gửi lệnh cơ bản trên CANoe CAPL.
-  - **Milestone 2:** Chạy được app Qt5 trên target; Cắm USB đọc được file và phát ra màn hình khi click chuột.
+  - OJT 3: Dựng giao diện QML hoàn chỉnh (VideoOutput, Playlist, Thanh điều khiển); Hoàn thiện ESP32 Web Dashboard kết nối WebSocket thời gian thực.
+  - **Milestone 2:** Chạy được app Qt5 trên target; Cắm USB đọc được file và phát ra màn hình khi click chuột; ESP32 Web Dashboard điều khiển gửi nhận lệnh ổn định.
 
 - **Tuần 3: Tích Hợp Toàn Diện & Xử Lý Ngoại Lệ (Integration & Robustness)**
-  - Cả nhóm phối hợp: Nối luồng CAN Service vào Player Controller; CANoe điều khiển trực tiếp Play/Pause/Next/Prev/FF/Rewind trên màn hình QML.
+  - Cả nhóm phối hợp: Nối luồng CAN Service vào Player Controller; ESP32 Web Dashboard điều khiển trực tiếp Play/Pause/Next/Prev/FF/Rewind trên màn hình QML.
   - Triển khai thuật toán kiểm tra Rolling Counter và Checksum để loại bỏ lệnh nhiễu.
+  - Đồng bộ trạng thái telemetry thời gian thực về Web Dashboard (LED, Progress Bar, Track Index, Heartbeat Pulse).
   - Bổ sung cơ chế xử lý ngoại lệ: Rút USB đột ngột khi đang phát video; USB chứa video hỏng/không đúng định dạng; Xung đột bus CAN.
-  - **Milestone 3:** Demo toàn chu trình end-to-end: Cắm USB -> Tự nạp Playlist -> Phát -> CANoe điều khiển toàn bộ và nhận trạng thái.
+  - **Milestone 3:** Demo toàn chu trình end-to-end: Cắm USB -> Tự nạp Playlist -> Phát -> ESP32 Web Dashboard điều khiển toàn bộ và nhận trạng thái.
 
 - **Tuần 4: Đo Kiểm, Tối Ưu Hóa & Đóng Gói Nghiệm Thu (Testing & Final Delivery)**
   - OJT 1: Tối ưu Boot time (< 8.5s); Đóng gói SD Card Image hoàn chỉnh; Viết tài liệu Build/Deployment Guide.
   - OJT 2: Chạy kiểm thử dài hạn (Soak Test 4h), kiểm tra rò rỉ bộ nhớ (Valgrind / Heaptrack); Đạt chuẩn CPU $\le 35\%$.
-  - OJT 3: Chạy toàn bộ Test Suite trên CANoe; Xuất Test Log; Quay video demo; Soạn slide báo cáo nghiệm thu.
+  - OJT 3: Chạy toàn bộ Test Suite tự động (Smoke Test trên Web Dashboard và trên CANoe nếu có); Xuất Test Log; Quay video demo; Soạn slide báo cáo nghiệm thu.
   - **Milestone 4:** Bàn giao toàn bộ 5 gói Deliverables, nghiệm thu dự án.
 
 ### 10.3 Ma Trận Kiểm Thử Nghiệm Thu (Acceptance Test Matrix)
@@ -1053,9 +1268,9 @@ FastTrack01/
 | **TC-DRV-02** | Bus-off Recovery | Chập dây CANH/CANL trong 2s rồi nhả ra. | Driver ghi nhận bus-off và tự hồi phục về `ERROR-ACTIVE` sau 100ms. | PASS |
 | **TC-USB-01** | Hotplug Detection | Cắm USB chứa 5 video MP4 vào cổng USB. | udev mount tự động; QML tự nạp 5 item vào playlist trong $\le 2$ giây. | PASS |
 | **TC-USB-02** | Hot-unplug Safety | Đang phát video, rút mạnh USB ra khỏi bo mạch. | App không bị crash/segmentation fault; Dừng video, hiện thông báo đỏ; Gửi CAN 0x101 trạng thái `NO_MEDIA`. | PASS |
-| **TC-CAN-01** | Play / Pause | Bấm nút Play trên CANoe -> Bấm Pause. | Video phát mượt mà -> Video dừng hình; CAN 0x101 phản hồi đúng trạng thái. | PASS |
-| **TC-CAN-02** | Next / Previous | Gửi lệnh Next (0x03) khi đang phát bài 2. | Video chuyển sang bài 3; Chỉ số Track Index trên CAN 0x101 đổi sang `2` (0-indexed). | PASS |
-| **TC-CAN-03** | Fast Forward / Seek | Gửi lệnh Seek Forward (0x05), Value = 10s. | Video nhảy cóc 10 giây; Tiến trình trên QML và CANoe đồng bộ tức thì. | PASS |
+| **TC-CAN-01** | Play / Pause | Bấm nút Play/Pause trên ESP32 Web Dashboard (hoặc nút SWC). | Video phát mượt mà -> Video dừng hình; Web Dashboard nhận telemetry CAN 0x101 cập nhật icon nút và LED trạng thái tức thì. | PASS |
+| **TC-CAN-02** | Next / Previous | Gửi lệnh Next (0x03) từ Web Dashboard khi đang phát bài 2. | Video chuyển sang bài 3; Chỉ số Track Index trên QML và Web Dashboard đổi sang `#02`. | PASS |
+| **TC-CAN-03** | Fast Forward / Seek | Bấm nút tua nhanh +10s hoặc kéo thanh trượt Seek Slider trên Web Dashboard. | Video nhảy cóc 10 giây; Tiến trình trên màn hình QML và Web Dashboard đồng bộ tức thì. | PASS |
 | **TC-CAN-04** | Invalid Checksum | Bơm frame 0x100 có Checksum cố tình sai. | Target bỏ qua frame, không thực thi lệnh; Ghi log cảnh báo `CRC_MISMATCH`. | PASS |
 | **TC-ROB-01** | Soak Test (Độ bền) | Chạy lặp lại toàn bộ playlist trong 4 giờ liên tục. | Ứng dụng hoạt động ổn định; CPU $\le 40\%$; Không tăng bộ nhớ ảo/RSS. | PASS |
 
@@ -1064,21 +1279,24 @@ FastTrack01/
 1. **Gói 01: Mã Nguồn Hoàn Chỉnh (Source Code Package)**
    - Toàn bộ source code C++ Backend, giao diện QML, CMakeLists.txt.
    - Patch Device Tree Overlay (`.dts`) và file cấu hình kernel driver.
-   - File cấu hình CANoe (`.cfg`), Graphic Panel (`.xvp`), mã nguồn CAPL (`.can`), và database (`.dbc`).
+   - Mã nguồn Firmware ESP32 Gateway Simulator (`Hardware_Gateway_ESP32/`), mã nguồn Web Dashboard HTML/CSS/JS nhúng, cấu hình PlatformIO.
+   - File cấu hình CANoe (`.cfg`), Graphic Panel (`.xvp`), mã nguồn CAPL (`.can`), và database (`.dbc`) dự phòng / bench test.
 2. **Gói 02: Tài Liệu Đặc Tả Kỹ Thuật (Specifications Package)**
    - Tài liệu Kiến trúc Hệ thống (System Architecture Document).
    - Đặc tả Giao thức CAN & Ma trận tín hiệu (CAN Protocol & DBC Spec).
    - Máy trạng thái Trình phát (Player FSM Specification).
+   - Hướng dẫn phần cứng và sơ đồ đấu nối ESP32 Gateway Simulator.
 3. **Gói 03: Gói Đóng Gói & Cài Đặt (Build & Deployment Package)**
    - Hướng dẫn Build hệ thống từ Yocto và từ SDK cross-compile.
    - Kịch bản thiết lập môi trường và cấu hình tự động khởi động.
    - File nạp nhị phân / Pre-built SD Card Image (`.wic.bz2`).
+   - File firmware nạp sẵn cho ESP32 (`firmware.bin`).
 4. **Gói 04: Bộ Hồ Sơ Kiểm Thử (Test Package)**
    - Kịch bản kiểm thử (Test Specification & Test Cases).
-   - Toàn bộ file log kiểm chứng (`candump.log`, CANoe Trace log).
+   - Toàn bộ file log kiểm chứng (`candump.log`, ESP32 Serial Sniffer log, CANoe Trace log).
    - Báo cáo kết quả kiểm thử chính thức (Formal Test Report) có chữ ký nghiệm thu.
 5. **Gói 05: Gói Trình Diễn & Báo Cáo (Demo Package)**
-   - Video quay thực tế toàn bộ hoạt động (cắm USB -> CANoe điều khiển -> rút USB).
+   - Video quay thực tế toàn bộ hoạt động (cắm USB -> ESP32 Web Dashboard điều khiển không dây trên điện thoại -> rút USB).
    - Slide thuyết trình tổng kết kết quả dự án (Final Presentation Slide).
    - Danh sách các điểm hạn chế đã biết và định hướng mở rộng (Known Issues & Future Improvements).
 

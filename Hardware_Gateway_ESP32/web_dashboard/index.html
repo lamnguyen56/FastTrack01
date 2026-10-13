@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 CAN Gateway | Automotive Cockpit HMI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-icon">🏎️</div>
+        <div>
+          <h1 class="logo-title">FASTTRACK-01 CAN GATEWAY</h1>
+          <p class="logo-subtitle">Automotive In-Vehicle Infotainment Simulator</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span id="wsStatus" class="badge badge-disconnected">WS: DISCONNECTED</span>
+        <button id="btnMockToggle" class="btn-sm" onclick="toggleMockMode()">Mock Mode: OFF</button>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="dashboard-grid">
+      <!-- Cụm Telemetry Cluster (CAN 0x101) -->
+      <section class="card telemetry-card">
+        <div class="card-header">
+          <h2>📊 IVI Cluster Telemetry (CAN ID 0x101)</h2>
+          <span id="heartbeatTag" class="pulse-indicator">❤️ Alive: 0</span>
+        </div>
+
+        <div class="telemetry-body">
+          <div class="info-row">
+            <span class="info-label">Trạng thái phát:</span>
+            <span id="playbackStateBadge" class="state-badge state-stopped">STOPPED</span>
+          </div>
+
+          <div class="info-row">
+            <span class="info-label">Thiết bị USB:</span>
+            <span id="usbStateBadge" class="state-badge usb-disconnected">DISCONNECTED</span>
+          </div>
+
+          <div class="info-row">
+            <span class="info-label">Bài hát / Track Index:</span>
+            <span id="trackIndexText" class="info-value">#00</span>
+          </div>
+
+          <!-- Video Progress Bar & Time Display -->
+          <div class="progress-container">
+            <div class="time-readout">
+              <span id="curTimeText">00:00</span>
+              <span id="totalTimeText">00:00</span>
+            </div>
+            <div class="progress-track" id="progressTrack">
+              <div class="progress-bar-fill" id="progressBarFill"></div>
+            </div>
+            <div class="progress-pct" id="progressPctText">0.0%</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cụm Live CAN Bus Sniffer -->
+      <section class="card sniffer-card">
+        <div class="card-header">
+          <h2>📡 Live CAN Bus Traffic Sniffer</h2>
+          <div class="sniffer-actions">
+            <button class="btn-xs" onclick="clearCanLog()">Xóa Log</button>
+          </div>
+        </div>
+        <div class="sniffer-console" id="snifferConsole">
+          <div class="log-line log-info">[SYSTEM] Đang khởi tạo kết nối mạng WebSocket...</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Cụm Điều Khiển Vô Lăng (Steering Wheel Controls - CAN ID 0x100) -->
+    <section class="card controls-card">
+      <div class="card-header">
+        <h2>🎮 Steering Wheel Media Controls (CAN ID 0x100)</h2>
+        <span class="sub-header-info">Bitrate: 500 kbps | Cyclic Feedback: 100ms</span>
+      </div>
+
+      <div class="controls-body">
+        <div class="swc-btn-group">
+          <button class="btn-swc" onclick="sendCanCommand(4, 0, 0)" title="Previous Track">
+            <span class="btn-icon">⏮</span>
+            <span class="btn-text">PREV</span>
+          </button>
+
+          <button class="btn-swc" onclick="sendCanCommand(0, 6, 10)" title="Rewind 10 Seconds">
+            <span class="btn-icon">◀◀</span>
+            <span class="btn-text">-10s</span>
+          </button>
+
+          <button class="btn-swc btn-play-pause" id="btnPlayPause" onclick="togglePlayPause()" title="Play / Pause Toggle">
+            <span class="btn-icon" id="playPauseIcon">▶</span>
+            <span class="btn-text" id="playPauseText">PLAY</span>
+          </button>
+
+          <button class="btn-swc" onclick="sendCanCommand(0, 5, 10)" title="Fast Forward 10 Seconds">
+            <span class="btn-icon">▶▶</span>
+            <span class="btn-text">+10s</span>
+          </button>
+
+          <button class="btn-swc" onclick="sendCanCommand(3, 0, 0)" title="Next Track">
+            <span class="btn-icon">⏭</span>
+            <span class="btn-text">NEXT</span>
+          </button>
+        </div>
+
+        <div class="seek-slider-container">
+          <label for="seekSlider">Kéo tua vị trí trực tiếp (Seek Scrubbing):</label>
+          <input type="range" id="seekSlider" min="0" max="100" value="0" class="custom-slider" onchange="onSeekSliderChange(this.value)">
+        </div>
+
+        <div class="auto-test-section">
+          <button class="btn-auto-test" id="btnAutoTest" onclick="runAutomatedSmokeTest()">
+            🚀 CHẠY KỊCH BẢN KIỂM THỬ TỰ ĐỘNG (SMOKE TEST: Play → FF → Next → Pause)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>OJT FastTrack-01 • Embedded Automotive Linux & CAN Simulation</span>
+      <span>Target: Raspberry Pi (can0 500kbps) | Node: ESP32 TWAI Driver</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
