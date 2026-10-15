@@ -1,0 +1,14 @@
+[Unit]
+Description=Automotive CAN Daemon (Platform Layer - can0 Bridge)
+After=systemd-udevd.service
+Wants=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/setup_can.sh
+ExecStart=/usr/bin/can-daemon
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

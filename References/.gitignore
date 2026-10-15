@@ -1,0 +1,42 @@
+# Build and Intermediate Directories
+build/
+App/build/
+*.build/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.lib
+
+# Qt Creator & Qt Build Artifacts
+.qtcreator/
+App/.qtcreator/
+*.user
+*.user.*
+*.qmlc
+*.jsc
+moc_*
+qrc_*
+ui_*
+Makefile*
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Yocto & Temporary Output
+tmp/
+sstate-cache/
+cache/
+downloads/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# IDE & Embedded Build
+.vscode/
+.idea/
+.pio/
+.pioenvs/

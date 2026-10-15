@@ -18,6 +18,26 @@ ApplicationWindow {
     property int currentProgress: 35
     property bool isMuted: false
 
+    // Lắng nghe tín hiệu CAN từ Tầng Platform (CanIpcClient)
+    Connections {
+        target: canClient
+        function onCommandPlay() {
+            rootWindow.isPlaying = true
+        }
+        function onCommandPause() {
+            rootWindow.isPlaying = false
+        }
+        function onCommandNext() {
+            rootWindow.currentTrackIndex = (rootWindow.currentTrackIndex + 1) % 5
+        }
+        function onCommandPrev() {
+            rootWindow.currentTrackIndex = (rootWindow.currentTrackIndex - 1 + 5) % 5
+        }
+        function onCommandSeek(seconds) {
+            rootWindow.currentProgress = Math.max(0, Math.min(100, rootWindow.currentProgress + seconds))
+        }
+    }
+
     // ==========================================
     // 1. HEADER BAR - COCKPIT HUD STYLE
     // ==========================================
@@ -124,8 +144,8 @@ ApplicationWindow {
                 height: 30
                 Layout.preferredWidth: canLayout.width + 20
                 radius: 15
-                color: "#122A2F"
-                border.color: "#00F0FF"
+                color: (typeof canClient !== "undefined" && canClient.connected) ? "#122A2F" : "#2A1810"
+                border.color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
                 border.width: 1
 
                 RowLayout {
@@ -137,7 +157,7 @@ ApplicationWindow {
                         width: 8
                         height: 8
                         radius: 4
-                        color: "#00F0FF"
+                        color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
 
                         // Pulsing glow animation
                         SequentialAnimation on opacity {
@@ -148,8 +168,8 @@ ApplicationWindow {
                     }
 
                     Text {
-                        text: "CAN: can0 500k ACTIVE"
-                        color: "#00F0FF"
+                        text: (typeof canClient !== "undefined" && canClient.connected) ? "CAN: can0 500k ACTIVE" : "CAN: WAITING DAEMON"
+                        color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
                         font.pixelSize: 11
                         font.bold: true
                         font.letterSpacing: 0.5

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(fasttrack-video-player VERSION 1.0.0 LANGUAGES CXX)
+project(ubs-video-player VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,32 +8,31 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+# Shared Constants.h:
+# 1. Từ thư mục cục bộ của App team (common/Constants.h)
+# 2. Hoặc từ Platform layer (meta-ubs-video-player/recipes-platform/common/files)
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/../meta-ubs-video-player/recipes-platform/common/files
+)
+
 # Hỗ trợ linh hoạt cả Qt6 (trên Windows Dev) và Qt5 (trên Yocto Linux Target)
+# Giữ nguyên convention từ References/App/CMakeLists.txt
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Gui Qml Quick Multimedia REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Qml Quick Multimedia REQUIRED)
-
-# SerialBus (CAN Bus) - Tùy chọn trên Windows Dev, tự động bật khi có module
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS SerialBus QUIET)
-
-# Check for libudev on Linux (không bắt buộc trên Windows)
-if(UNIX AND NOT APPLE)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(UDEV REQUIRED libudev)
-    add_definitions(-DHAVE_LIBUDEV)
-endif()
 
 include_directories(
     src
     src/Core
-    src/CanService
-    src/UsbStorage
+    src/CanClient
+    src/UsbScanner
     src/PlayerEngine
-    ${UDEV_INCLUDE_DIRS}
 )
 
 set(SOURCES
     src/main.cpp
-    # Add other C++ implementation files as development progresses
+    src/CanClient/CanIpcClient.cpp
+    src/CanClient/CanIpcClient.h
 )
 
 set(RESOURCES
@@ -52,14 +51,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Quick
     Qt${QT_VERSION_MAJOR}::Multimedia
 )
-
-if(TARGET Qt${QT_VERSION_MAJOR}::SerialBus)
-    target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::SerialBus)
-    add_definitions(-DHAVE_QT_SERIALBUS)
-endif()
-
-if(UDEV_FOUND)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${UDEV_LIBRARIES})
-endif()
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
