@@ -1,0 +1,87 @@
+# =============================================================================
+# User-maintained Yocto configuration template
+# =============================================================================
+# This file is managed separately from the Yocto build directory.
+# setup-build.sh inserts this content into build/conf/local.conf.
+#
+# Purpose:
+#   - Keep personal and project-specific settings outside build/.
+#   - Preserve these settings when the build directory is deleted and recreated.
+#   - Keep layer paths and layer configuration in conf/bblayers.conf instead.
+#
+# IMPORTANT:
+#   After modifying this template, run setup-build.sh again to update the
+#   managed configuration block in build/conf/local.conf.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# 1. Target machine
+# -----------------------------------------------------------------------------
+
+# Build a 64-bit image for Raspberry Pi 3.
+MACHINE = "raspberrypi3-64"
+
+
+# -----------------------------------------------------------------------------
+# 2. Build parallelism
+# -----------------------------------------------------------------------------
+
+# Maximum number of BitBake tasks running concurrently.
+# Start conservatively on WSL2; increase after checking RAM usage.
+BB_NUMBER_THREADS = "6"
+
+# Maximum parallel jobs for supported make-based build tasks.
+PARALLEL_MAKE = "-j 6"
+
+
+# -----------------------------------------------------------------------------
+# 3. Raspberry Pi hardware settings
+# -----------------------------------------------------------------------------
+
+# Enable UART for serial-console debugging.
+ENABLE_UART = "1"
+
+
+
+# -----------------------------------------------------------------------------
+# 4. Download and shared-state cache directories
+# -----------------------------------------------------------------------------
+
+# Downloaded source archives and Git repositories.
+DL_DIR = "${TOPDIR}/../yocto_downloads"
+
+# Reusable outputs from completed build tasks.
+SSTATE_DIR = "${TOPDIR}/../yocto_sstate"
+
+# meta-qt5 uses QT_GIT_PROTOCOL for its Git fetcher URLs.
+# Use HTTPS instead of the native Git protocol (TCP port 9418).
+QT_GIT_PROTOCOL = "https"
+
+# Use Qt's GitHub mirror for this module when code.qt.io is unreachable.
+# Preserve the recipe's branch, SRCREV and patches.
+QT_GIT:pn-qtquickcontrols2 = "git://github.com/qt"
+
+
+# -----------------------------------------------------------------------------
+# 5. Image and boot configuration
+# -----------------------------------------------------------------------------
+
+# Use the Raspberry Pi WIC partition layout supplied by meta-raspberrypi.
+WKS_FILE = "sdimage-raspberrypi.wks"
+
+# Generate WIC images and a compressed WIC image.
+IMAGE_FSTYPES += "wic wic.gz"
+
+
+# -----------------------------------------------------------------------------
+# 6. Init system
+# -----------------------------------------------------------------------------
+
+# Use Yocto's high-level configuration for systemd.
+# This also selects systemd's associated device-management configuration.
+INIT_MANAGER = "systemd"
+
+# =============================================================================
+# End of user-maintained configuration
+# =============================================================================

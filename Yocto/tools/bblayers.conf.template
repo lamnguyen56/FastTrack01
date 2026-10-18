@@ -1,0 +1,43 @@
+# =============================================================================
+# User-maintained Yocto layer configuration template
+# =============================================================================
+# This template is maintained in the tools/ directory and copied to
+# ${TOPDIR}/conf/bblayers.conf by setup-bblayers.sh.
+#
+# TOPDIR is the active Yocto build directory. For this project, the build
+# directory is located outside the poky repository, for example:
+#   ~/projects/FastTrack01/Yocto/build
+#
+# The poky, meta-openembedded, and meta-raspberrypi repositories are located
+# alongside the build directory under the project root:
+#   ~/projects/FastTrack01/Yocto/
+#
+# Layer paths are expressed relative to TOPDIR to avoid hard-coded usernames
+# and absolute paths.
+#
+# Keep this template in tools/ so it remains available when the build
+# directory is deleted and recreated.
+# =============================================================================
+
+# Version of the bblayers.conf configuration format expected by this release.
+POKY_BBLAYERS_CONF_VERSION = "2"
+
+# Set BitBake's base search path to the active build directory.
+BBPATH = "${TOPDIR}"
+
+# No additional recipe files are declared directly in this configuration.
+BBFILES ?= ""
+
+# List all layers required by this project.
+# The first three layers belong to the poky repository.
+# The remaining layers are provided by external repositories located
+# alongside poky/ and the build directory.
+BBLAYERS ?= " \
+  ${TOPDIR}/../poky/meta \
+  ${TOPDIR}/../poky/meta-poky \
+  ${TOPDIR}/../poky/meta-yocto-bsp \
+  ${TOPDIR}/../meta-openembedded/meta-oe \
+  ${TOPDIR}/../meta-raspberrypi \
+  ${TOPDIR}/../meta-qt5 \
+  ${TOPDIR}/../meta-ubs-video-player \
+  "

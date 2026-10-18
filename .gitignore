@@ -30,6 +30,8 @@ tmp/
 sstate-cache/
 cache/
 downloads/
+yocto_downloads/
+yocto_sstate/
 *.swp
 *~
 .DS_Store
@@ -40,3 +42,12 @@ Thumbs.db
 .idea/
 .pio/
 .pioenvs/
+.agents
+# Repository scope: root files and the two project-owned Yocto directories.
+# Ignore other root directories without ignoring root-level files.
+/*/
+!/Yocto/
+/Yocto/*/
+!/Yocto/meta-ubs-video-player/
+!/Yocto/tools/
+!/Docs/

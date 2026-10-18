@@ -1,0 +1,16 @@
+[Unit]
+Description=UBS Automotive Video Player (Qt QML HMI Application)
+After=can-daemon.service usb-monitor.service systemd-udevd.service
+Wants=can-daemon.service usb-monitor.service
+
+[Service]
+Type=simple
+# Cấu hình biến môi trường Qt chạy mượt mà trên framebuffer / DRM KMS của bo nhúng
+Environment="QT_QPA_PLATFORM=eglfs"
+# Use the Qt5 default Controls style instead of forcing Qt6 Basic.
+ExecStart=/usr/bin/ubs-video-player
+Restart=always
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target
