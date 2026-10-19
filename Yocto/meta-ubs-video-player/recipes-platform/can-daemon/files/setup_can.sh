@@ -1,36 +1,32 @@
 #!/bin/sh
-# ==============================================================================
-# Script: setup_can.sh
-# Purpose: Initialize SocketCAN interface (can0) with 500 kbps & auto-restart
-# Target: Raspberry Pi / Linux Embedded Target with MCP2515
-# Gốc từ: References/Hardware_BSP/scripts/setup_can.sh
-# ==============================================================================
+# Configure the interface only after the kernel has registered it.
+set -eu
 
-set -e
+CAN_IF="${CAN_IF:-can0}"
+CAN_BITRATE="${CAN_BITRATE:-500000}"
+RESTART_MS="${CAN_RESTART_MS:-100}"
+WAIT_SECONDS="${CAN_WAIT_SECONDS:-30}"
 
-CAN_IF="can0"
-CAN_BITRATE="500000"
-RESTART_MS="100"
+for value in "$CAN_BITRATE" "$RESTART_MS" "$WAIT_SECONDS"; do
+    case "$value" in
+        ''|*[!0-9]*) echo "[CAN_INIT] Invalid numeric setting: $value" >&2; exit 1 ;;
+    esac
+done
 
-echo "[CAN_INIT] Starting SocketCAN bring-up for $CAN_IF..."
+# The project builds mcp251x into the kernel. Do not rely on lsmod/modprobe.
+elapsed=0
+until ip link show dev "$CAN_IF" >/dev/null 2>&1; do
+    if [ "$elapsed" -ge "$WAIT_SECONDS" ]; then
+        echo "[CAN_INIT] $CAN_IF not found after ${WAIT_SECONDS}s; check overlay, oscillator, wiring and dmesg" >&2
+        exit 1
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+done
 
-# Check and load kernel module
-if ! lsmod | grep -q "mcp251x"; then
-    echo "[CAN_INIT] Loading mcp251x kernel module..."
-    modprobe mcp251x || true
-fi
-
-# Bring down interface if already up
-if ip link show "$CAN_IF" 2>/dev/null | grep -q "UP"; then
-    echo "[CAN_INIT] Interface $CAN_IF is currently UP. Bringing it DOWN to reconfigure..."
-    ip link set "$CAN_IF" down
-fi
-
-# Configure bitrate, restart-ms and bring UP
-echo "[CAN_INIT] Setting bitrate=$CAN_BITRATE bps, restart-ms=$RESTART_MS ms on $CAN_IF..."
-ip link set "$CAN_IF" type can bitrate "$CAN_BITRATE" restart-ms "$RESTART_MS"
-ip link set "$CAN_IF" txqueuelen 1000
-ip link set "$CAN_IF" up
-
-echo "[CAN_INIT] SUCCESS: $CAN_IF is UP and operational!"
-ip -details link show "$CAN_IF"
+ip link set dev "$CAN_IF" down
+ip link set dev "$CAN_IF" type can bitrate "$CAN_BITRATE" restart-ms "$RESTART_MS"
+ip link set dev "$CAN_IF" txqueuelen 1000
+ip link set dev "$CAN_IF" up
+ip -details -statistics link show dev "$CAN_IF"
+echo "[CAN_INIT] $CAN_IF configured and UP; physical TX/RX still requires a bus test."

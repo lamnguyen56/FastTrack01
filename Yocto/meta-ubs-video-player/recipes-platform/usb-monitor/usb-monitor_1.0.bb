@@ -9,7 +9,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:${THISDIR}/../common/files:"
 
 SRC_URI = " \
     file://CMakeLists.txt \
-    file://src/main.cpp \
+    file://src/ \
     file://usb-monitor.service \
     file://Constants.h \
 "
@@ -21,9 +21,8 @@ inherit cmake pkgconfig systemd
 SYSTEMD_SERVICE:${PN} = "usb-monitor.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
-# The daemon invokes mount/umount, but does not format or repair filesystems.
-# udev is a runtime provider; systemd builds must not force eudev.
-RDEPENDS:${PN} += "udev util-linux-mount util-linux-umount"
+# The daemon uses mount/umount2 syscalls; udev provides hotplug events.
+RDEPENDS:${PN} += "udev"
 
 do_install:append() {
     install -d ${D}${systemd_system_unitdir}

@@ -7,7 +7,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:${THISDIR}/../common/files:"
 
 SRC_URI = " \
     file://CMakeLists.txt \
-    file://src/main.cpp \
+    file://src/ \
     file://can-daemon.service \
     file://setup_can.sh \
     file://Constants.h \
