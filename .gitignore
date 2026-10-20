@@ -1,6 +1,6 @@
 # Build and Intermediate Directories
 build/
-App/build/
+
 *.build/
 *.o
 *.obj
@@ -12,7 +12,7 @@ App/build/
 
 # Qt Creator & Qt Build Artifacts
 .qtcreator/
-App/.qtcreator/
+
 *.user
 *.user.*
 *.qmlc
@@ -48,9 +48,9 @@ Thumbs.db
 /*/
 !/Yocto/
 /Yocto/*/
-!/Yocto/meta-ubs-video-player/
+!/Yocto/meta-usb-video-player/
 !/Yocto/tools/
 !/Docs/
 
 # Local Wi-Fi credentials; keep out of Git.
-/Yocto/meta-ubs-video-player/recipes-connectivity/wifi/files/private/
+/Yocto/meta-usb-video-player/recipes-connectivity/wifi/files/private/

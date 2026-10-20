@@ -2,7 +2,7 @@
 
 > **Tên dự án:** Embedded Automotive USB Video Player Controlled via CAN Bus  
 > **Hệ điều hành nhúng:** Linux Yocto Scarthgap (Poky 5.0 LTS - Kernel 6.6 LTS, Hỗ trợ đến 2028)  
-> **Nền tảng HMI:** Qt6 / QML chạy trực tiếp trên EGLFS / Linux KMS (Hardware Accelerated)  
+> **Nền tảng HMI:** Qt5 trên target / Qt6 trên desktop / QML chạy trực tiếp trên EGLFS / Linux KMS (Hardware Accelerated)
 > **Giao thức mạng xe:** SocketCAN (can0 @ 500 kbps, DBC đồng bộ 100%)  
 > **Cơ chế IPC:** Unix Domain Socket (UDS) & File State IPC (Zero-overhead, thay thế hoàn toàn D-Bus)  
 
@@ -10,70 +10,32 @@
 
 ## 1. CẤU TRÚC THƯ MỤC DỰ ÁN (PROJECT TREE FOLDER)
 
-Dự án được tái cấu trúc tinh gọn theo mô hình cộng tác chuẩn công nghiệp ô tô: **Phân chia 2 Team độc lập (App Team & Platform Team)**. Thay vì tạo thêm thư mục `Platform` rời rạc gây phân mảnh mã nguồn, toàn bộ mã nguồn nền tảng (Platform Daemons, Cấu hình Kernel/SocketCAN, Systemd Services và Công thức đóng gói Yocto) được **hợp nhất trực tiếp vào `meta-ubs-video-player`**.
+Dự án được tái cấu trúc tinh gọn theo mô hình cộng tác chuẩn công nghiệp ô tô: **Phân chia 2 Team độc lập (App Team & Platform Team)**. Thay vì tạo thêm thư mục `Platform` rời rạc gây phân mảnh mã nguồn, toàn bộ mã nguồn nền tảng (Platform Daemons, Cấu hình Kernel/SocketCAN, Systemd Services và Công thức đóng gói Yocto) được **hợp nhất trực tiếp vào `meta-usb-video-player`**.
 
 ```text
 FastTrack01/
-├── App/                                      <-- [TẦNG ỨNG DỤNG - DÀNH RIÊNG CHO APP TEAM (QT6/QML HMI)]
-│   ├── CMakeLists.txt                        <-- CMake build Qt App (hỗ trợ cả Qt5 & Qt6, Mock tự động trên Windows)
-│   ├── common/
-│   │   └── Constants.h                       <-- Hợp đồng truyền thông (CAN ID, Struct IPC nhị phân)
-│   ├── src/
-│   │   ├── main.cpp                          <-- Điểm khởi động HMI, inject CanIpcClient vào QML context
-│   │   └── CanClient/
-│   │       ├── CanIpcClient.h                <-- Client kết nối can-daemon qua UDS (tích hợp Mock cho App Dev)
-│   │       └── CanIpcClient.cpp              <-- Giải mã gói tin nhị phân và phát tín hiệu Qt Signals
-│   └── qml/
-│       ├── main.qml                          <-- Giao diện Cockpit Cyberpunk HUD (Video player, playlist, status)
-│       └── qml.qrc                           <-- File tài nguyên Qt Resource đóng gói QML
-│
-├── meta-ubs-video-player/                    <-- [TẦNG NỀN TẢNG - DÀNH RIÊNG CHO PLATFORM TEAM (YOCTO LAYER & DAEMONS)]
-│   ├── conf/
-│   │   └── layer.conf                        <-- Khai báo Yocto Layer tương thích Scarthgap (Poky 5.0 LTS)
-│   │
-│   ├── recipes-platform/                     <-- Mã nguồn & Bitbake recipes các daemon tầng thấp (System/Hardware)
-│   │   ├── common/
-│   │   │   └── files/
-│   │   │       └── Constants.h               <-- Header gốc chuẩn định nghĩa Protocol CAN & Struct UDS IPC
-│   │   ├── can-daemon/                       <-- Dịch vụ SocketCAN can0 bridge
-│   │   │   ├── can-daemon_1.0.bb             <-- Bitbake recipe build can-daemon & systemd unit
-│   │   │   └── files/
-│   │   │       ├── CMakeLists.txt            <-- CMake cấu hình biên dịch C++17
-│   │   │       ├── can-daemon.service        <-- Systemd unit file tự động khởi chạy can-daemon
-│   │   │       ├── setup_can.sh              <-- Script bring-up can0 (500 kbps, restart-ms 100)
-│   │   │       └── src/
-│   │   │           └── main.cpp              <-- Đọc can0, validate checksum, phát qua Unix Domain Socket
-│   │   └── usb-monitor/                      <-- Dịch vụ giám sát Hotplug USB & Quét Media
-│   │       ├── usb-monitor_1.0.bb            <-- Bitbake recipe build usb-monitor (phụ thuộc libudev)
-│   │       └── files/
-│   │           ├── CMakeLists.txt            <-- CMake cấu hình biên dịch C++17 + libudev
-│   │           ├── usb-monitor.service       <-- Systemd unit file tự động khởi chạy usb-monitor
-│   │           └── src/
-│   │               └── main.cpp              <-- libudev lắng nghe cắm/rút USB, auto-mount, quét MP4/MKV
-│   │
-│   ├── recipes-app/                          <-- Recipe đóng gói tầng Ứng dụng HMI từ App/
-│   │   └── ubs-video-player/
-│   │       ├── ubs-video-player_1.0.bb       <-- Recipe kéo source App/ biên dịch Qt HMI (qtbase, qtmultimedia)
-│   │       └── files/
-│   │           └── ubs-video-player.service  <-- Systemd unit file khởi chạy HMI EGLFS tự động khi boot
-│   │
-│   └── recipes-core/
-│       └── images/
-│           └── ubs-image.bb                  <-- Image Yocto DUY NHẤT đóng gói toàn bộ hệ thống
-│
-├── Simulation/                               <-- [CÔNG CỤ GIẢ LẬP CAN ĐIỀU KHIỂN & TESTING]
-│   ├── esp32-can-simulator/
-│   │   └── esp32_can_transmitter.ino         <-- Code nạp ESP32 TWAI (CAN bus) + Serial Controller
-│   └── scripts/
-│       └── simulate_can_sender.py            <-- Script Python giả lập phát SocketCAN trên máy tính dev
-│
-├── References/                               <-- Thư mục lưu trữ tài nguyên gốc (App mẫu, DBC, DTS, tài liệu)
-│   ├── App/                                  <-- Source App mẫu nguyên bản
-│   ├── CANoe_Simulation/                     <-- Database CAN (.dbc) và mô phỏng CANoe
-│   ├── Hardware_BSP/                         <-- DTS overlay, kernel config cho MCP2515
-│   └── PROJECT_BASELINE_AND_GUIDE.md         <-- Tài liệu baseline ban đầu
-│
-└── YOCTO_SCARTHGAP_GUIDE.md                  <-- Cẩm nang hướng dẫn toàn diện này
+├── Yocto/
+│   ├── meta-usb-video-player/
+│   │   ├── conf/layer.conf
+│   │   ├── recipes-app/usb-video-player/
+│   │   │   ├── usb-video-player_1.0.bb
+│   │   │   └── files/                    # CMakeLists.txt, src/, qml/, service
+│   │   ├── recipes-common/common/
+│   │   │   ├── common_1.0.bb
+│   │   │   └── files/                    # Constants.h, Logger.h, CMake export
+│   │   ├── recipes-platform/             # USB/CAN daemons and host tests
+│   │   ├── recipes-connectivity/wifi/
+│   │   ├── recipes-kernel/
+│   │   ├── recipes-bsp/
+│   │   ├── recipes-qt/
+│   │   └── recipes-core/images/usb-image.bb
+│   ├── tools/                           # Build, SSH and deploy scripts
+│   ├── poky/, meta-openembedded/, meta-raspberrypi/, meta-qt5/
+│   ├── build/                           # Generated, not version-controlled
+│   ├── yocto_downloads/                 # Local download cache
+│   └── yocto_sstate/                    # Local task cache
+├── References/                          # Historical reference sources
+└── YOCTO_SCARTHGAP_GUIDE.md
 ```
 
 ---
@@ -85,14 +47,14 @@ Mô hình phân tách này giải quyết triệt để vấn đề phụ thuộ
 ```mermaid
 graph TB
     subgraph AppTeam ["APP TEAM (Frontend HMI)"]
-        A1["Thư mục làm việc: App/"]
-        A2["Công nghệ: Qt6 / QML / C++17"]
+        A1["Thư mục làm việc: Yocto/meta-usb-video-player/recipes-app/usb-video-player/files/"]
+        A2["Công nghệ: Qt5 target / Qt6 desktop / QML / C++17"]
         A3["Môi trường: Windows / Linux Desktop (Qt Creator, VS Code)"]
         A4["Kiểm thử: Tích hợp Mock CAN nội bộ - Không cần board nhúng"]
     end
 
     subgraph PlatformTeam ["PLATFORM TEAM (Backend BSP & Yocto)"]
-        P1["Thư mục làm việc: meta-ubs-video-player/"]
+        P1["Thư mục làm việc: meta-usb-video-player/"]
         P2["Công nghệ: Linux Kernel 6.6, SocketCAN, libudev, systemd, Bitbake"]
         P3["Môi trường: Ubuntu Linux Target / WSL2 Yocto Build Host"]
         P4["Kiểm thử: Hardware Target (RPi/i.MX8), vcan0, ESP32 CAN"]
@@ -104,23 +66,23 @@ graph TB
     PlatformTeam <===> Contract
 ```
 
-### 2.1. App Team (`App/`)
+### 2.1. App Team (`Yocto/meta-usb-video-player/recipes-app/usb-video-player/files/`)
 * **Phạm vi trách nhiệm:**
-  - Thiết kế và phát triển giao diện người dùng HMI Cockpit trên [App/qml/main.qml](file:///d:/04_PROJECT/FastTrack01/App/qml/main.qml).
+  - Thiết kế và phát triển giao diện người dùng HMI Cockpit trên [Yocto/meta-usb-video-player/recipes-app/usb-video-player/files/qml/main.qml](./Yocto/meta-usb-video-player/recipes-app/usb-video-player/files/qml/main.qml).
   - Tối ưu trải nghiệm phát video: Surface video tràn màn hình, visualizer sóng âm, playlist sidebar, hiển thị metadata bài hát.
-  - Xử lý tương tác thông qua [CanIpcClient](file:///d:/04_PROJECT/FastTrack01/App/src/CanClient/CanIpcClient.h): tiếp nhận tín hiệu CAN đã được giải mã từ `can-daemon` và gửi trạng thái playback định kỳ 500ms.
+  - Xử lý tương tác thông qua [CanIpcClient](./Yocto/meta-usb-video-player/recipes-app/usb-video-player/files/src/CanClient/CanIpcClient.h): tiếp nhận tín hiệu CAN đã được giải mã từ `can-daemon` và gửi trạng thái playback định kỳ 500ms.
 * **Quyền độc lập hoàn toàn:**
   - Không cần máy ảo Yocto hay máy chủ Linux.
   - Không cần board mạch nhúng hay phần cứng CAN vật lý.
-  - Có thể mở trực tiếp thư mục [App/](file:///d:/04_PROJECT/FastTrack01/App) bằng Qt Creator trên máy Windows cá nhân và nhấn `Run` để test giao diện ngay lập tức với chế độ Mock CAN tự sinh dữ liệu.
+  - Có thể mở trực tiếp thư mục [Yocto/meta-usb-video-player/recipes-app/usb-video-player/files/](./Yocto/meta-usb-video-player/recipes-app/usb-video-player/files) bằng Qt Creator trên máy Windows cá nhân và nhấn `Run` để test giao diện ngay lập tức với chế độ Mock CAN tự sinh dữ liệu.
 
-### 2.2. Platform Team (`meta-ubs-video-player/`)
-* **Tại sao `meta-ubs-video-player` là Platform duy nhất?**
-  - Trong các dự án nhúng, việc tạo thêm một folder `Platform/` song song với layer Yocto dẫn đến tình trạng "phân mảnh mã nguồn" (fragmentation): Platform team phải duy trì 2 nơi, vừa phải viết code trong `Platform/`, vừa phải viết công thức Bitbake trong `meta-ubs-video-player/`.
-  - Hợp nhất toàn bộ vào `meta-ubs-video-player/`:
+### 2.2. Platform Team (`meta-usb-video-player/`)
+* **Tại sao `meta-usb-video-player` là Platform duy nhất?**
+  - Trong các dự án nhúng, việc tạo thêm một folder `Platform/` song song với layer Yocto dẫn đến tình trạng "phân mảnh mã nguồn" (fragmentation): Platform team phải duy trì 2 nơi, vừa phải viết code trong `Platform/`, vừa phải viết công thức Bitbake trong `meta-usb-video-player/`.
+  - Hợp nhất toàn bộ vào `meta-usb-video-player/`:
     1. **Tự chứa (Self-contained):** Mã nguồn các daemon (`can-daemon`, `usb-monitor`), scripts bring-up và systemd service nằm trọn vẹn trong `recipes-platform/`.
     2. **Độc lập biên dịch:** Mã nguồn daemon có file `CMakeLists.txt` chuẩn, có thể biên dịch trực tiếp trên Linux target bằng CMake thường (`cmake -B build && cmake --build build`) hoặc biên dịch tự động qua Bitbake.
-    3. **Đóng gói chuẩn Yocto:** Cung cấp sẵn file `ubs-image.bb` để tạo ra một image Linux OS hoàn chỉnh nạp trực tiếp vào thẻ nhớ.
+    3. **Đóng gói chuẩn Yocto:** Cung cấp sẵn file `usb-image.bb` để tạo ra một image Linux OS hoàn chỉnh nạp trực tiếp vào thẻ nhớ.
 * **Phạm vi trách nhiệm:**
   - Cấu hình phần cứng: Device Tree overlay cho chip SPI CAN MCP2515, cấu hình Kernel driver SocketCAN.
   - Viết và duy trì 2 daemon hệ thống:
@@ -142,7 +104,7 @@ graph TB
 
 ### Cấu trúc gói tin nhị phân IPC (Đồng bộ trong `Constants.h`):
 
-Header chuẩn được lưu tại [meta-ubs-video-player/recipes-platform/common/files/Constants.h](file:///d:/04_PROJECT/FastTrack01/meta-ubs-video-player/recipes-platform/common/files/Constants.h) và sao lưu tại [App/common/Constants.h](file:///d:/04_PROJECT/FastTrack01/App/common/Constants.h):
+Header chuẩn duy nhất nằm tại [Constants.h](./Yocto/meta-usb-video-player/recipes-common/common/files/Constants.h). Recipe `common` cung cấp header qua sysroot và CMake target `Common::Headers`; không còn bản sao riêng trong app.
 
 ```cpp
 // 1. Gói tin Lệnh từ can-daemon gửi đến Qt App (5 Bytes)
@@ -183,7 +145,7 @@ sequenceDiagram
     participant SetupCAN as setup_can.sh
     participant CanDaemon as can-daemon (Platform)
     participant UsbMonitor as usb-monitor (Platform)
-    participant QtApp as ubs-video-player (App Team)
+    participant QtApp as usb-video-player (App Team)
 
     Kernel->>Systemd: Khởi động hoàn tất, nạp multi-user.target
     Systemd->>SetupCAN: ExecStartPre: Cấu hình can0 (500 kbps, restart-ms 100)
@@ -192,7 +154,7 @@ sequenceDiagram
     CanDaemon->>CanDaemon: Mở SocketCAN can0 & tạo Server UDS /tmp/can_ipc.sock
     Systemd->>UsbMonitor: ExecStart: Khởi chạy usb-monitor
     UsbMonitor->>UsbMonitor: Kết nối libudev netlink socket, quét /dev/sd*
-    Systemd->>QtApp: ExecStart: Khởi chạy ubs-video-player (sau khi daemon đã sẵn sàng)
+    Systemd->>QtApp: ExecStart: Khởi chạy usb-video-player (sau khi daemon đã sẵn sàng)
     QtApp->>QtApp: Init EGLFS / KMS OpenGL context
     QtApp->>CanDaemon: CanIpcClient mở /tmp/qt_app_ipc.sock kết nối tới can-daemon
     CanDaemon-->>QtApp: Kênh IPC nhị phân sẵn sàng hoạt động
@@ -312,7 +274,7 @@ git clone -b scarthgap git://git.openembedded.org/meta-openembedded
 git clone -b scarthgap https://code.qt.io/yocto/meta-qt6.git
 
 # 4. Liên kết meta-layer dự án (Platform repository)
-ln -s /path/to/FastTrack01/meta-ubs-video-player ./meta-ubs-video-player
+ln -s /path/to/FastTrack01/meta-usb-video-player ./meta-usb-video-player
 ```
 
 ### 5.3. Khởi tạo môi trường Yocto
@@ -327,7 +289,7 @@ bitbake-layers add-layer ../meta-openembedded/meta-oe
 bitbake-layers add-layer ../meta-openembedded/meta-python
 bitbake-layers add-layer ../meta-openembedded/meta-networking
 bitbake-layers add-layer ../meta-qt6
-bitbake-layers add-layer ../meta-ubs-video-player
+bitbake-layers add-layer ../meta-usb-video-player
 ```
 
 ### 5.5. Cấu hình tối ưu trong `conf/local.conf`
@@ -351,10 +313,10 @@ LICENSE_FLAGS_ACCEPTED = "commercial"
 ### 5.6. Biên dịch Image duy nhất
 Chạy lệnh bitbake để build image:
 ```bash
-bitbake ubs-image
+bitbake usb-image
 ```
 *Thời gian build lần đầu: khoảng 1.5 - 3 tiếng tùy thuộc CPU và tốc độ mạng.*  
-*File ảnh hoàn tất sẽ nằm tại:* `tmp/deploy/images/<machine>/ubs-image-<machine>.rootfs.wic.bz2`
+*File ảnh hoàn tất sẽ nằm tại:* `tmp/deploy/images/<machine>/usb-image-<machine>.rootfs.wic.bz2`
 
 ---
 
@@ -362,14 +324,14 @@ bitbake ubs-image
 
 Để video phát mượt mà (60 FPS, CPU < 15%) trên màn hình ô tô:
 1. **Không dùng X11 / Wayland:**  
-   Trong file [meta-ubs-video-player/recipes-app/ubs-video-player/files/ubs-video-player.service](file:///d:/04_PROJECT/FastTrack01/meta-ubs-video-player/recipes-app/ubs-video-player/files/ubs-video-player.service), ta đặt:
+   Trong file [meta-usb-video-player/recipes-app/usb-video-player/files/usb-video-player.service](./Yocto/meta-usb-video-player/recipes-app/usb-video-player/files/usb-video-player.service), ta đặt:
    ```ini
    Environment="QT_QPA_PLATFORM=eglfs"
    Environment="QT_QPA_EGLFS_ALWAYS_SET_MODE=1"
    ```
    Qt sẽ dùng nền tảng **EGLFS** xuất hình trực tiếp vào GPU framebuffer qua Linux DRM/KMS, loại bỏ hoàn toàn độ trễ của cửa sổ desktop.
 2. **Backend GStreamer tăng tốc phần cứng:**  
-   QtMultimedia tự động kết nối với các plugin `gstreamer1.0-plugins-good` và `hwcodecs` đã được đóng gói trong [ubs-image.bb](file:///d:/04_PROJECT/FastTrack01/meta-ubs-video-player/recipes-core/images/ubs-image.bb) để giải mã trực tiếp bằng phần cứng (V4L2 M2M hardware video decoder).
+   QtMultimedia tự động kết nối với các plugin `gstreamer1.0-plugins-good` và `hwcodecs` đã được đóng gói trong [usb-image.bb](./Yocto/meta-usb-video-player/recipes-core/images/usb-image.bb) để giải mã trực tiếp bằng phần cứng (V4L2 M2M hardware video decoder).
 
 ---
 

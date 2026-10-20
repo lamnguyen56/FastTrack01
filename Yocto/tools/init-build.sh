@@ -324,4 +324,4 @@ echo
 echo "Next commands:"
 echo "  bitbake-layers show-layers"
 echo "  bitbake -p"
-echo "  bitbake ubs-image"
+echo "  bitbake usb-image"

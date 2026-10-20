@@ -19,7 +19,7 @@ fi
 case "${1:-}" in
     usb|usb-monitor) PROCESS=usb-monitor ;;
     can|can-daemon) PROCESS=can-daemon ;;
-    app|ubs-video-player) PROCESS=ubs-video-player ;;
+    app|usb-video-player) PROCESS=usb-video-player ;;
     *) usage >&2; exit 2 ;;
 esac
 shift
@@ -92,7 +92,7 @@ set -eu
 upload="$1"
 process="$2"
 # Validate remotely as well before using the process in paths or unit names.
-case "$process" in usb-monitor|can-daemon|ubs-video-player) ;; *) exit 2 ;; esac
+case "$process" in usb-monitor|can-daemon|usb-video-player) ;; *) exit 2 ;; esac
 service="${process}.service"
 binary="/usr/bin/$process"
 backup="${binary}.previous"
@@ -126,7 +126,7 @@ finish() {
         fi
     fi
     if [ "$player_active" = 1 ]; then
-        systemctl start ubs-video-player.service || result=1
+        systemctl start usb-video-player.service || result=1
     fi
     rm -f "$upload" "$staged" "$backup.new"
     rmdir "$lock"
@@ -139,7 +139,7 @@ trap 'exit 143' TERM
 
 if systemctl is-active --quiet "$service"; then was_active=1; fi
 # Only USB needs the player stopped to release open media files before unmount.
-if [ "$process" = usb-monitor ] && systemctl is-active --quiet ubs-video-player.service; then
+if [ "$process" = usb-monitor ] && systemctl is-active --quiet usb-video-player.service; then
     player_active=1
 fi
 
@@ -150,7 +150,7 @@ cp "$upload" "$staged"
 cp -p "$binary" "$backup.new"
 mv -f "$backup.new" "$backup"
 if [ "$player_active" = 1 ]; then
-    systemctl stop ubs-video-player.service
+    systemctl stop usb-video-player.service
 fi
 systemctl stop "$service"
 mv -f "$staged" "$binary"

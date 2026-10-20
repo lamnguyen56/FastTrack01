@@ -33,7 +33,7 @@ for layer in \
     "${PROJECT_DIR}/meta-raspberrypi" \
     "${PROJECT_DIR}/meta-openembedded/meta-oe" \
     "${PROJECT_DIR}/meta-qt5" \
-    "${PROJECT_DIR}/meta-ubs-video-player"
+    "${PROJECT_DIR}/meta-usb-video-player"
 do
     if [[ ! -f "${layer}/conf/layer.conf" ]]; then
         echo "ERROR: Layer configuration not found: ${layer}/conf/layer.conf"

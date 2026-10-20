@@ -106,12 +106,12 @@ If a layer contains modified files, untracked files, or local commits that fail 
 After the build environment has been initialized successfully, run:
 
 ```bash
-bitbake ubs-image
+bitbake usb-image
 ```
 
 Wait for the build to finish. Build time depends on the host hardware and the available caches.
 
-**Expected result:** BitBake successfully builds the `ubs-image` image.
+**Expected result:** BitBake successfully builds the `usb-image` image.
 
 Output images are located in `Yocto/build/tmp/deploy/images/${MACHINE}/`. With the current machine configuration, `raspberrypi3-64`, check:
 
@@ -124,5 +124,5 @@ Whenever you open a new terminal, initialize the environment again before runnin
 ```bash
 cd ~/projects/FastTrack01/Yocto
 source tools/init-build.sh
-bitbake ubs-image
+bitbake usb-image
 ```

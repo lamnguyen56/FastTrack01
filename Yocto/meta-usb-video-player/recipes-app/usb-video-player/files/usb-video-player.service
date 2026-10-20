@@ -1,0 +1,25 @@
+[Unit]
+Description=USB Automotive Video Player (Qt QML HMI Application)
+After=can-daemon.service usb-monitor.service systemd-udevd.service
+Wants=can-daemon.service usb-monitor.service
+
+[Service]
+Type=simple
+# Give Qt a private runtime directory managed by systemd.
+RuntimeDirectory=usb-video-player
+RuntimeDirectoryMode=0700
+Environment="XDG_RUNTIME_DIR=/run/usb-video-player"
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=usb-video-player
+# Render directly on the display using the EGLFS DRM/KMS backend.
+Environment="QT_QPA_PLATFORM=eglfs"
+# Also support Qt builds without fontconfig by specifying the TTF directory.
+Environment="QT_QPA_FONTDIR=/usr/share/fonts/truetype"
+# Use the Qt5 default Controls style instead of forcing Qt6 Basic.
+ExecStart=/usr/bin/usb-video-player
+Restart=always
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target

@@ -39,5 +39,5 @@ BBLAYERS ?= " \
   ${TOPDIR}/../meta-openembedded/meta-oe \
   ${TOPDIR}/../meta-raspberrypi \
   ${TOPDIR}/../meta-qt5 \
-  ${TOPDIR}/../meta-ubs-video-player \
+  ${TOPDIR}/../meta-usb-video-player \
   "

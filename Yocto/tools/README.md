@@ -7,7 +7,7 @@ Scripts and configuration templates for the FastTrack01 **Yocto Scarthgap** buil
 ```text
 FastTrack01/
 └── Yocto/
-    ├── meta-ubs-video-player/         # Project layer, included in the project repository
+    ├── meta-usb-video-player/  # Project layer, included in the project repository
     ├── tools/                 # Scripts and templates, included in the project repository
     ├── poky/                  # External layers managed by init-build.sh
     ├── meta-openembedded/
@@ -35,7 +35,7 @@ Then initialize the build environment and build the image:
 source tools/init-build.sh
 bitbake-layers show-layers
 bitbake -p
-bitbake ubs-image
+bitbake usb-image
 ```
 
 Use `source`, not `bash`, for `init-build.sh`: the environment must remain available in the current shell. Successful initialization changes the current directory to the build directory and exports `BUILDDIR`.
@@ -51,7 +51,7 @@ Use `source`, not `bash`, for `init-build.sh`: the environment must remain avail
 | meta-raspberrypi | `018d44467c4f09eb63f8ea5e86e85d755250cf89` |
 | meta-qt5 | `916d37e38077850ff5a0ac4fce6f2a55ba5b2a86` |
 
-The commit variables in `init-build.sh` are the source of truth. `meta-ubs-video-player` is maintained in the FastTrack01 repository and is not cloned or pinned separately by this script.
+The commit variables in `init-build.sh` are the source of truth. `meta-usb-video-player` is maintained in the FastTrack01 repository and is not cloned or pinned separately by this script.
 
 Initialization stops if an external repository has modified/untracked files, its origin URL differs from the expected URL, or its local `scarthgap` branch contains commits outside the fetched upstream history. A detached HEAD outside that history also causes an error. Preserve and reconcile local work before retrying; do not force-reset it to bypass these checks.
 
@@ -88,7 +88,7 @@ source tools/init-build.sh
 | `ssh.sh` | Connects as root using an explicit IPv4 address or resolves `PI_MAC` from the Windows ARP cache. Supports `--ip` and `PI_IP`. |
 | `deploy-process.sh` | Builds and deploys the ARM64 executable for `usb`, `can` or `app`, with backup, service restart and attempted rollback. |
 
-Automatic MAC lookup requires Windows PowerShell interoperability and an existing Windows ARP entry. An explicit IP bypasses Windows commands. See [Wi-Fi provisioning and troubleshooting](../meta-ubs-video-player/recipes-connectivity/wifi/README.md) for target setup.
+Automatic MAC lookup requires Windows PowerShell interoperability and an existing Windows ARP entry. An explicit IP bypasses Windows commands. See [Wi-Fi provisioning and troubleshooting](../meta-usb-video-player/recipes-connectivity/wifi/README.md) for target setup.
 
 ## Updating build configuration
 
@@ -208,7 +208,7 @@ fetching external layers again. Use `init-build.sh` for initial setup.
 |---|---|---|
 | `usb` | `usb-monitor` | `usb-monitor.service` |
 | `can` | `can-daemon` | `can-daemon.service` |
-| `app` | `ubs-video-player` | `ubs-video-player.service` |
+| `app` | `usb-video-player` | `usb-video-player.service` |
 
 Full recipe names are accepted too. A destination without a username defaults
 to root. The remote account must have UID 0; the script does not invoke sudo.
