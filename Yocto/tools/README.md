@@ -7,7 +7,7 @@ Scripts and configuration templates for the FastTrack01 **Yocto Scarthgap** buil
 ```text
 FastTrack01/
 └── Yocto/
-    ├── meta-fasttrack/         # Project layer, included in the project repository
+    ├── meta-ubs-video-player/         # Project layer, included in the project repository
     ├── tools/                 # Scripts and templates, included in the project repository
     ├── poky/                  # External layers managed by init-build.sh
     ├── meta-openembedded/
@@ -51,7 +51,7 @@ Use `source`, not `bash`, for `init-build.sh`: the environment must remain avail
 | meta-raspberrypi | `018d44467c4f09eb63f8ea5e86e85d755250cf89` |
 | meta-qt5 | `916d37e38077850ff5a0ac4fce6f2a55ba5b2a86` |
 
-The commit variables in `init-build.sh` are the source of truth. `meta-fasttrack` is maintained in the FastTrack01 repository and is not cloned or pinned separately by this script.
+The commit variables in `init-build.sh` are the source of truth. `meta-ubs-video-player` is maintained in the FastTrack01 repository and is not cloned or pinned separately by this script.
 
 Initialization stops if an external repository has modified/untracked files, its origin URL differs from the expected URL, or its local `scarthgap` branch contains commits outside the fetched upstream history. A detached HEAD outside that history also causes an error. Preserve and reconcile local work before retrying; do not force-reset it to bypass these checks.
 
@@ -83,11 +83,12 @@ source tools/init-build.sh
 | `init-build.sh` | Verifies external layers, sources `oe-init-build-env`, then applies both configuration templates. |
 | `setup-bblayers.sh` | Validates the configured layer directories and copies the entire `bblayers.conf.template` to the active build directory. |
 | `setup-build.sh` | Adds or replaces the managed configuration block in the active `local.conf`, preserving content outside the block. Rejects incomplete, duplicated or reversed markers. |
-| `bblayers.conf.template` | Defines the poky, OpenEmbedded, Raspberry Pi, Qt5 and FastTrack layer paths relative to `TOPDIR`. |
+| `bblayers.conf.template` | Defines the poky, OpenEmbedded, Raspberry Pi, Qt5 and project layer paths relative to `TOPDIR`. |
 | `local.conf.template` | Defines machine, parallelism, cache paths, fetch settings, image formats and init manager. |
-| `ssh.sh` | Optional convenience helper that searches the Windows ARP table for a hard-coded Pi MAC address and connects as root using SSH. Update the MAC before use. |
+| `ssh.sh` | Connects as root using an explicit IPv4 address or resolves `PI_MAC` from the Windows ARP cache. Supports `--ip` and `PI_IP`. |
+| `deploy-process.sh` | Builds and deploys the ARM64 executable for `usb`, `can` or `app`, with backup, service restart and attempted rollback. |
 
-The SSH helper depends on Windows PowerShell interoperability, an existing ARP entry and an SSH server on the target. It does not configure networking, install SSH on the image or discover devices that are absent from the ARP table.
+Automatic MAC lookup requires Windows PowerShell interoperability and an existing Windows ARP entry. An explicit IP bypasses Windows commands. See [Wi-Fi provisioning and troubleshooting](../meta-ubs-video-player/recipes-connectivity/wifi/README.md) for target setup.
 
 ## Updating build configuration
 
@@ -142,36 +143,112 @@ ls "$BUILDDIR/tmp/deploy/images/raspberrypi3-64/"
 
 Installing packages in the image does not by itself configure the CAN controller, USB automount or multimedia/display backend. Those platform features require their own configuration and target validation.
 
-## Deploy usb-monitor over Wi-Fi
+## SSH access
 
-From the initialized Yocto shell, run:
-
-```sh
-bash ../tools/deploy-usb-monitor.sh --logs root@192.168.1.50
-```
-
-Replace the IP with the Pi's DHCP address. The script builds the target recipe,
-verifies AArch64, uploads the executable, saves a backup and restarts the service.
-An active player is stopped during the update and restarted afterward. On errors,
-the script attempts rollback. Omit `--logs` to return after deployment. The Pi must
-already have SSH, Wi-Fi and compatible runtime libraries installed.
-
-## Find the Pi by MAC
-
-The deployment script reuses `tools/ssh.sh` when its destination is omitted:
+These examples run from the repository's `Yocto` directory in WSL:
 
 ```sh
-bash ../tools/deploy-usb-monitor.sh --logs
+cd ~/projects/FastTrack01/Yocto
+bash tools/ssh.sh 192.168.1.30
 ```
 
-The default MAC is `b8:27:eb:db:99:c4`. Override it if needed:
+The IP is an example; confirm the Pi's current address on its serial console with
+`ip -4 addr show wlan0`. The target must already have networking and OpenSSH.
+Set a root password with `passwd` on the Pi or provision an SSH public key.
+
+To resolve the address by MAC instead:
 
 ```sh
-PI_MAC="b8:27:eb:db:99:c4" bash ../tools/deploy-usb-monitor.sh --logs
+bash tools/ssh.sh
+bash tools/ssh.sh --ip
+PI_MAC=b8:27:eb:db:99:c4 bash tools/ssh.sh --ip
 ```
 
-Use `bash ../tools/ssh.sh` for an interactive SSH session, or
-`bash ../tools/ssh.sh --ip` to print only the discovered address. The resolver
-reads Windows' ARP cache from WSL; it does not actively scan the subnet. The Pi
-must be visible in that cache. Missing or ambiguous entries fail explicitly;
-you can still pass an IP directly to deploy-usb-monitor.sh.
+The default MAC is `b8:27:eb:db:99:c4`; use the actual wlan0 MAC of your board.
+`--ip` prints only the resolved address. Both colon and hyphen MAC notation are
+accepted. The current script reads Windows' ARP cache through PowerShell; it does
+not scan the subnet or consult the router's DHCP leases.
+
+If the Pi is missing from that cache, and its current IP is known:
+
+```sh
+ping.exe -n 1 192.168.1.30
+bash tools/ssh.sh
+```
+
+If Windows commands fail with `Exec format error` or `UtilAcceptVsock`, bypass
+interop with an explicit address or `PI_IP`:
+
+```sh
+bash tools/ssh.sh 192.168.1.30
+PI_IP=192.168.1.30 bash tools/ssh.sh
+```
+
+To recover interop, finish any running builds before executing `wsl --shutdown`
+from Windows PowerShell, then reopen Ubuntu. Shutdown terminates all WSL processes.
+Check with `cmd.exe /c ver`. Do not assume an absent ARP entry means the Pi is offline.
+
+## Deploy one process
+
+Run from the initialized Yocto **build directory**, where BitBake is available:
+
+```sh
+cd ~/projects/FastTrack01/Yocto
+source poky/oe-init-build-env build
+
+bash ../tools/deploy-process.sh usb 192.168.1.30
+bash ../tools/deploy-process.sh can 192.168.1.30
+bash ../tools/deploy-process.sh app 192.168.1.30
+```
+
+Using `oe-init-build-env` here reopens an existing configured build without
+fetching external layers again. Use `init-build.sh` for initial setup.
+
+| Selector | Recipe / executable | Unit |
+|---|---|---|
+| `usb` | `usb-monitor` | `usb-monitor.service` |
+| `can` | `can-daemon` | `can-daemon.service` |
+| `app` | `ubs-video-player` | `ubs-video-player.service` |
+
+Full recipe names are accepted too. A destination without a username defaults
+to root. The remote account must have UID 0; the script does not invoke sudo.
+
+Place `--logs` before the selector to follow journal output after deployment:
+
+```sh
+bash ../tools/deploy-process.sh --logs app 192.168.1.30
+```
+
+Ctrl+C at the journal-following stage exits the log view; the service stays
+running. Omitting the destination uses `ssh.sh --ip` after the build:
+
+```sh
+bash ../tools/deploy-process.sh --logs usb
+PI_MAC=b8:27:eb:db:99:c4 bash ../tools/deploy-process.sh can
+PI_IP=192.168.1.30 bash ../tools/deploy-process.sh app
+```
+
+Prefer an explicit address when WSL interop is unreliable. SSH keys avoid repeated
+password prompts; the scripts use standard SSH authentication and host-key checks.
+
+### What deployment changes
+
+The script builds the selected recipe, resolves its output path using `bitbake -e`,
+checks AArch64, uploads to a temporary file, prepares a backup and replacement on
+the target filesystem, stops the selected service and renames the new executable
+into place. It starts the service and checks that it is active after two seconds.
+
+For USB only, an active player is stopped first so it can release media files,
+then started again. CAN and app updates do not stop unrelated services. A CAN
+update needs can0 configured and available for its service startup check to pass.
+An app update needs a supported display connected and its runtime fonts/plugins.
+
+On errors, the script attempts to restore the old binary and previous service
+state. This is best-effort rollback; loss of power/network can require manual
+recovery. A successful two-second check is not a functional USB/CAN/video test.
+The backup is `/usr/bin/<executable>.previous`, replaced on each deployment.
+
+Only the executable is copied. QML embedded in the app's resource file is included,
+but service units, `setup_can.sh`, libraries, fonts, firmware, kernel and device tree
+must be deployed separately or through a rebuilt image. The target must already
+have compatible dependencies. Flashing a new image replaces manual target changes.

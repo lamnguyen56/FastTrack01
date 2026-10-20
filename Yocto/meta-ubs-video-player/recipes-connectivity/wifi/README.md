@@ -1,146 +1,183 @@
-# Wi-Fi and SSH development on Raspberry Pi 3B
+# Wi-Fi and SSH on Raspberry Pi 3B
 
-The image installs wpa_supplicant (association), systemd-networkd (IPv4 DHCP),
-OpenSSH/SFTP, the brcmfmac and brcmfmac-wcc kernel modules, the static wireless regulatory database and BCM43430
-firmware. This targets Pi 3B, not Pi 3B+ (which needs BCM43455 firmware).
-No CAN or USB service waits for Wi-Fi to become available.
+This recipe configures Wi-Fi for Pi 3B with its BCM43430 radio. Pi 3B+ needs a
+different firmware package and is not covered by this configuration. Use a
+2.4 GHz WPA2-Personal access point. Connect the laptop to the same LAN and disable
+AP/client isolation if enabled.
 
-## Configure the access point before building
+## Components
 
-Pi 3B uses 2.4 GHz Wi-Fi. Use a WPA2-Personal access point with client/AP
-isolation disabled so the laptop can reach the Pi. Both join the same LAN.
+| Component | Purpose |
+|---|---|
+| `wpa-supplicant` | Association and WPA2 authentication on wlan0 |
+| `wifi-wlan0.service` | Starts and supervises wpa_supplicant at boot |
+| `systemd-networkd` | Obtains an IPv4 address and DNS information through DHCP |
+| `systemd-resolved` | Resolves names using the network's DNS configuration |
+| `20-wlan0.network` | Selects wlan0 and enables IPv4 DHCP with its MAC as client ID |
+| `kernel-module-brcmfmac` | SDIO Wi-Fi driver, enabled by the BSP kernel |
+| `kernel-module-brcmfmac-wcc` | Firmware vendor support loaded dynamically by the driver |
+| `linux-firmware-bcm43430` | Radio firmware and board data |
+| `wireless-regdb-static` | Kernel-loaded regulatory.db and signature |
 
-From this directory, create a local, Git-ignored configuration:
+`ubs-image.bb` installs `wifi-config` and enables OpenSSH/SFTP through
+`ssh-server-openssh`. DHCP/DNS use the existing systemd build configuration.
+USB and CAN services do not wait for Wi-Fi to connect.
+
+## Configure credentials before building
+
+Run from the repository's `Yocto` directory in WSL. Create a private override
+without overwriting an existing one:
 
 ```sh
-mkdir -p files/private
-cp files/wpa_supplicant-wlan0.conf files/private/
-chmod 600 files/private/wpa_supplicant-wlan0.conf
+cd ~/projects/FastTrack01/Yocto
+wifi_dir=meta-ubs-video-player/recipes-connectivity/wifi
+mkdir -p "$wifi_dir/files/private"
+if [ ! -e "$wifi_dir/files/private/wpa_supplicant-wlan0.conf" ]; then
+    cp "$wifi_dir/files/wpa_supplicant-wlan0.conf" "$wifi_dir/files/private/"
+fi
+chmod 600 "$wifi_dir/files/private/wpa_supplicant-wlan0.conf"
+nano "$wifi_dir/files/private/wpa_supplicant-wlan0.conf"
 ```
 
-Edit `files/private/wpa_supplicant-wlan0.conf`: replace `ssid` and `psk` with
-the actual values and change `disabled=1` to `disabled=0`. Keep `country=VN`
-only when operating in Vietnam. The passphrase must contain 8 to 63 characters;
-escape quotes and backslashes if present. This private file overrides the public
-template. Without it the example network remains disabled.
+Replace `ssid` and `psk`, and change `disabled=1` to `disabled=0`:
 
-Credentials are installed with mode 0600, but are still present in the generated
-image and build output. Keep those artifacts private as well.
+```ini
+country=VN
+ctrl_interface=/run/wpa_supplicant
+update_config=0
 
-In the initialized Yocto build shell:
+network={
+    ssid="YOUR_SSID"
+    psk="YOUR_PASSWORD"
+    key_mgmt=WPA-PSK
+    disabled=0
+}
+```
+
+Use the regulatory country where the board operates. The quoted passphrase must
+contain 8 to 63 characters; escape quotes and backslashes if present. The private
+file has priority over the public template. Without it, the example network stays
+disabled. The private directory is Git-ignored. Credentials are installed with
+mode 0600 but remain in build output and the image; keep these artifacts private.
+
+In an initialized Yocto build shell:
 
 ```sh
 bitbake ubs-image
 ```
 
-Deploy this image once to provision the kernel modules, firmware, Wi-Fi and SSH.
-Subsequent daemon-only changes can be copied through SSH without reflashing.
+Deploy the image to provision networking, firmware, modules and SSH. Later
+executable-only updates can use SSH without reflashing.
 
-## Check the first boot over the serial console
+## Verify on the Pi serial console
 
 ```sh
-systemctl status wifi-wlan0.service systemd-networkd.service sshd.socket
-journalctl -u wifi-wlan0.service -u systemd-networkd.service -b --no-pager
+systemctl status wifi-wlan0.service systemd-networkd.service systemd-resolved.service --no-pager -l
 wpa_cli -i wlan0 status
 ip -4 addr show wlan0
 cat /sys/class/net/wlan0/address
 ```
 
-Expect `wpa_state=COMPLETED` and an IPv4 address. If wlan0 is missing, inspect
-`dmesg | grep -Ei 'brcm|firmware|cfg80211'` and `lsmod | grep brcmfmac`.
-The driver is installed as a module and loaded by device discovery; the existing
-BSP kernel already enables CONFIG_BRCMFMAC=m and CONFIG_BRCMFMAC_SDIO=y.
+Expect `wpa_state=COMPLETED` and an IPv4 address. The project board currently uses
+MAC `b8:27:eb:db:99:c4`; `192.168.1.30` is its observed DHCP address, not a guaranteed
+address for every boot or board. A router DHCP reservation can keep the address
+stable for that MAC. The Pi itself continues to use DHCP.
 
-Use the wlan0 MAC printed above to locate the DHCP lease in the AP/router UI.
-Reserve that IP for the MAC there. A MAC address alone does not resolve an IP;
-`arp -a` only lists neighbours already present in the local cache.
-
-Set a root password with `passwd` on the serial console before SSH login, or
-provision an SSH public key. The current development image uses debug-tweaks;
-this setup does not add any hard-coded password.
-
-From the laptop (replace the example IP with the actual DHCP address):
+Set a root password with `passwd` on the serial console or provision an SSH public
+key. This development image uses debug-tweaks and does not set a fixed password.
+Check the SSH socket/service if connections fail:
 
 ```sh
-ssh root@192.168.1.50
+systemctl status sshd.socket sshd.service --no-pager -l
 ```
 
-OpenSSH may listen through `sshd.socket` and start sshd on demand. If connection
-fails, check `systemctl status sshd.socket sshd.service` and AP client isolation.
+A socket-activated SSH service may start only when a client connects.
 
-## Change Wi-Fi on an already provisioned Pi
+## Connect and deploy from the laptop
 
-Edit `/etc/wpa_supplicant/wpa_supplicant-wlan0.conf` on the Pi, then run:
+From `Yocto` in WSL, use the Pi's actual address:
 
 ```sh
+bash tools/ssh.sh 192.168.1.30
+```
+
+After initializing the build shell, deploy a selected process from the build
+directory:
+
+```sh
+bash ../tools/deploy-process.sh usb 192.168.1.30
+bash ../tools/deploy-process.sh can 192.168.1.30
+bash ../tools/deploy-process.sh --logs app 192.168.1.30
+```
+
+See [the tools README](../../../tools/README.md#deploy-one-process) for the full
+workflow, backups, rollback and binary-only deployment limits.
+
+Omitting the address makes `ssh.sh` resolve `PI_MAC` from the Windows ARP cache
+through PowerShell. This is cache lookup, not an active subnet scan. It depends
+on Windows interop and an existing entry. Explicit IP connections bypass this
+Windows dependency. See [SSH access](../../../tools/README.md#ssh-access) for
+MAC overrides and WSL troubleshooting.
+
+## Change Wi-Fi on an installed Pi
+
+Using the serial console, edit:
+
+```sh
+vi /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
 chmod 600 /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
 systemctl restart wifi-wlan0.service
 ```
 
-The enabled service reconnects automatically after reboot. Restarting it over
-Wi-Fi interrupts the SSH session; use the serial console when changing networks.
+The service reconnects on reboot. Restarting it interrupts any Wi-Fi SSH session.
+Target edits survive reboot but are replaced by a new image flash. Update the
+private build configuration too if subsequent images should use the new network.
 
-## Update only usb-monitor
+## Troubleshooting
 
-Run the deployment script from an initialized Yocto build shell in WSL:
-
-```sh
-bash ../tools/deploy-usb-monitor.sh root@192.168.1.50
-
-# Deploy and follow the service journal (Ctrl+C exits the log view):
-bash ../tools/deploy-usb-monitor.sh --logs root@192.168.1.50
-```
-
-Replace the IP with the Pi's address. The script builds `usb-monitor`, reads its
-actual recipe image directory from BitBake, checks for AArch64, uploads through
-SCP, backs up the installed executable, and atomically replaces it. It stops the
-player first if active and starts it again afterward. SSH authentication uses
-your normal password/key configuration; SSH keys avoid repeated password prompts.
-
-If deployment fails, the script attempts to restore the previous executable and
-service state. It checks that usb-monitor remains active for two seconds after
-starting; this does not replace functional USB tests. Inspect journal output and
-plug/unplug a real USB drive after deployment.
-
-The backup remains at `/usr/bin/usb-monitor.previous`. For manual rollback on Pi:
+### wlan0 does not exist
 
 ```sh
-systemctl stop ubs-video-player.service
-systemctl stop usb-monitor.service
-cp -p /usr/bin/usb-monitor.previous /usr/bin/usb-monitor.new && mv /usr/bin/usb-monitor.new /usr/bin/usb-monitor
-systemctl start usb-monitor.service
-systemctl start ubs-video-player.service
+ip link show
+dmesg | grep -Ei 'brcm|firmware|cfg80211|mmc'
+lsmod | grep brcmfmac
 ```
 
-Binary-only updates work when the installed libraries and ABI remain compatible.
-Changes to shared libraries, kernel, device tree, runtime dependencies or service
-units need the corresponding files/packages deployed too. A later image flash
-replaces manual changes, so keep source changes in the recipe repository.
+The BSP enables CONFIG_BRCMFMAC=m and CONFIG_BRCMFMAC_SDIO=y. The WCC vendor module
+is loaded at runtime and is not inferred as a normal module dependency. Errors
+such as `mod=wcc: failed` and `brcmf_fwvid_attach failed` require checking that
+`kernel-module-brcmfmac-wcc` is installed. For `regulatory.db` not found, check
+`wireless-regdb-static`; `wireless-regdb` alone contains the legacy CRDA database.
 
-## Kernel 6.6 runtime dependencies
-
-The WCC firmware vendor support is a separate module, loaded dynamically by
-brcmfmac. Install kernel-module-brcmfmac-wcc as well as kernel-module-brcmfmac.
-A missing WCC module can cause brcmf_fwvid_attach to fail before wlan0 appears.
-Use wireless-regdb-static for the kernel-loaded regulatory.db and its signature;
-the wireless-regdb package alone supplies the legacy CRDA database.
-
-## Find the Pi by MAC
-
-The deployment script reuses `tools/ssh.sh` when its destination is omitted:
+### wlan0 exists but remains disconnected
 
 ```sh
-bash ../tools/deploy-usb-monitor.sh --logs
+wpa_cli -i wlan0 list_networks
+journalctl -u wifi-wlan0.service -b -n 50 --no-pager
+wpa_cli -i wlan0 scan
+sleep 3
+wpa_cli -i wlan0 scan_results
 ```
 
-The default MAC is `b8:27:eb:db:99:c4`. Override it if needed:
+If the configured network is `[DISABLED]`, set `disabled=0` in the configuration
+and restart the Wi-Fi service. Otherwise check SSID, WPA2 password, AP signal and
+2.4 GHz availability. Do not publish the configuration file with its password.
+
+### Wi-Fi is completed but no IPv4 address is assigned
 
 ```sh
-PI_MAC="b8:27:eb:db:99:c4" bash ../tools/deploy-usb-monitor.sh --logs
+networkctl status wlan0
+journalctl -u systemd-networkd.service -b -n 50 --no-pager
+ip -4 addr show wlan0
 ```
 
-Use `bash ../tools/ssh.sh` for an interactive SSH session, or
-`bash ../tools/ssh.sh --ip` to print only the discovered address. The resolver
-reads Windows' ARP cache from WSL; it does not actively scan the subnet. The Pi
-must be visible in that cache. Missing or ambiguous entries fail explicitly;
-you can still pass an IP directly to deploy-usb-monitor.sh.
+Check that the AP provides DHCP and that `/etc/systemd/network/20-wlan0.network`
+is installed. Authentication and DHCP are separate steps; a completed WPA state
+does not by itself prove DHCP succeeded.
+
+### IP exists but SSH fails
+
+Check the laptop's network, AP client isolation, SSH socket/service and root
+credentials. For WSL `Exec format error` or `UtilAcceptVsock`, use an explicit IP
+with ssh.sh; these errors concern Windows interop during MAC lookup, not the
+Pi's SSH server. Confirm with a direct `ssh root@192.168.1.30` attempt.
