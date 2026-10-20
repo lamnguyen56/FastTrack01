@@ -9,6 +9,7 @@ SRC_URI = " \
     file://src/ \
     file://qml/ \
     file://usb-video-player.service \
+    file://wait-for-display.sh \
 "
 S = "${WORKDIR}"
 
@@ -34,8 +35,9 @@ SYSTEMD_SERVICE:${PN} = "usb-video-player.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
 do_install:append() {
-    install -d ${D}${systemd_system_unitdir}
+    install -d ${D}${bindir} ${D}${systemd_system_unitdir}
+    install -m 0755 ${WORKDIR}/wait-for-display.sh ${D}${bindir}/
     install -m 0644 ${WORKDIR}/usb-video-player.service ${D}${systemd_system_unitdir}/
 }
 
-FILES:${PN} += "${bindir}/usb-video-player ${systemd_system_unitdir}/usb-video-player.service"
+FILES:${PN} += "${bindir}/usb-video-player ${bindir}/wait-for-display.sh ${systemd_system_unitdir}/usb-video-player.service"

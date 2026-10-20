@@ -69,3 +69,24 @@ Run these commands from Yocto. Standalone Qt development can open
 recipes-app/usb-video-player/files/CMakeLists.txt with Qt Creator; it uses the
 same shared headers under recipes-common. Install the required Qt development
 modules on the host for that workflow.
+
+## Display readiness at boot
+
+The app service runs /usr/bin/wait-for-display.sh before starting EGLFS. It waits
+up to 60 seconds for a connected DRM connector with advertised display modes and
+a primary /dev/dri/cardN character device. If the display is still unavailable,
+the service retries after RestartSec. It does not force a resolution or repair
+EDID/cable problems, and unplugging a display after startup needs separate testing.
+CAN startup is not ordered before the UI, so missing CAN hardware does not impose
+its setup timeout on each UI restart. The service still wants the CAN daemon.
+
+Validate the gate without display hardware from Yocto:
+
+```sh
+python3 meta-usb-video-player/recipes-app/usb-video-player/tests/display_test.py
+```
+
+Deploy both wait-for-display.sh and usb-video-player.service when updating an
+existing Pi manually, then run systemctl daemon-reload and restart the app. The
+binary-only deploy-process.sh script does not copy these files. A rebuilt
+usb-image includes both automatically. No qtbase rebuild is needed for this change.

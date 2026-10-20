@@ -1,6 +1,6 @@
 [Unit]
 Description=USB Automotive Video Player (Qt QML HMI Application)
-After=can-daemon.service usb-monitor.service systemd-udevd.service
+After=usb-monitor.service systemd-udevd.service
 Wants=can-daemon.service usb-monitor.service
 
 [Service]
@@ -17,6 +17,10 @@ Environment="QT_QPA_PLATFORM=eglfs"
 # Also support Qt builds without fontconfig by specifying the TTF directory.
 Environment="QT_QPA_FONTDIR=/usr/share/fonts/truetype"
 # Use the Qt5 default Controls style instead of forcing Qt6 Basic.
+# Avoid starting EGLFS before a connected DRM output has display modes.
+Environment="DISPLAY_WAIT_SECONDS=60"
+ExecStartPre=/usr/bin/wait-for-display.sh
+TimeoutStartSec=70s
 ExecStart=/usr/bin/usb-video-player
 Restart=always
 RestartSec=3s
