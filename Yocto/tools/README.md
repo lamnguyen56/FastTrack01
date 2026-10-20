@@ -141,3 +141,37 @@ ls "$BUILDDIR/tmp/deploy/images/raspberrypi3-64/"
 ```
 
 Installing packages in the image does not by itself configure the CAN controller, USB automount or multimedia/display backend. Those platform features require their own configuration and target validation.
+
+## Deploy usb-monitor over Wi-Fi
+
+From the initialized Yocto shell, run:
+
+```sh
+bash ../tools/deploy-usb-monitor.sh --logs root@192.168.1.50
+```
+
+Replace the IP with the Pi's DHCP address. The script builds the target recipe,
+verifies AArch64, uploads the executable, saves a backup and restarts the service.
+An active player is stopped during the update and restarted afterward. On errors,
+the script attempts rollback. Omit `--logs` to return after deployment. The Pi must
+already have SSH, Wi-Fi and compatible runtime libraries installed.
+
+## Find the Pi by MAC
+
+The deployment script reuses `tools/ssh.sh` when its destination is omitted:
+
+```sh
+bash ../tools/deploy-usb-monitor.sh --logs
+```
+
+The default MAC is `b8:27:eb:db:99:c4`. Override it if needed:
+
+```sh
+PI_MAC="b8:27:eb:db:99:c4" bash ../tools/deploy-usb-monitor.sh --logs
+```
+
+Use `bash ../tools/ssh.sh` for an interactive SSH session, or
+`bash ../tools/ssh.sh --ip` to print only the discovered address. The resolver
+reads Windows' ARP cache from WSL; it does not actively scan the subnet. The Pi
+must be visible in that cache. Missing or ambiguous entries fail explicitly;
+you can still pass an IP directly to deploy-usb-monitor.sh.

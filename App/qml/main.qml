@@ -1,6 +1,6 @@
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 
 ApplicationWindow {
     id: rootWindow
@@ -481,7 +481,7 @@ ApplicationWindow {
                     color: "#00F0FF"
                     font.bold: true
                     font.pixelSize: 12
-                    font.family: "Consolas"
+                    font.family: "DejaVu Sans Mono"
                 }
 
                 Slider {
@@ -546,7 +546,7 @@ ApplicationWindow {
                     color: "#8E9EB5"
                     font.bold: true
                     font.pixelSize: 12
-                    font.family: "Consolas"
+                    font.family: "DejaVu Sans Mono"
                 }
             }
 

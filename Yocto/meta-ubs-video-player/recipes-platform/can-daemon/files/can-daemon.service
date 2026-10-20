@@ -7,6 +7,10 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=simple
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=can-daemon
+Environment=LOG_LEVEL=INFO
 ExecStartPre=/usr/bin/setup_can.sh
 ExecStart=/usr/bin/can-daemon
 Restart=always

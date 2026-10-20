@@ -11,6 +11,7 @@ SRC_URI = " \
     file://can-daemon.service \
     file://setup_can.sh \
     file://Constants.h \
+    file://Logger.h \
 "
 
 S = "${WORKDIR}"

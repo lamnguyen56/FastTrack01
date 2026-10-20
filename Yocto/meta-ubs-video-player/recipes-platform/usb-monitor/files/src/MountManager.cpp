@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
-#include <iostream>
+#include "Logger.h"
 #include <cerrno>
 #include <cstring>
 #include <sys/mount.h>
@@ -63,29 +63,29 @@ bool MountManager::mount(const Device& device) {
     std::error_code ec;
     fs::create_directories(path_, ec);
     if (ec.value() != 0) {
-        std::cerr << "[usb] mkdir: " << ec.message() << '\n';
+        LOG_E("[usb] mkdir: ", ec.message());
         return false;
     }
     // Never cover existing data or mount a USB root filesystem a second time.
     const int state = mountedAt(path_, device.number);
     if (state < 0) {
-        std::cerr << "[usb] Mount point unavailable\n";
+        LOG_W("USB mount point unavailable; refusing to replace an existing mount");
         return false;
     }
     // A service restart may adopt its previous mount, but only if still read-only.
     if (state == 1) {
         struct statvfs info{};
         if (::statvfs(path_.c_str(), &info) != 0 || (info.f_flag & ST_RDONLY) == 0) {
-            std::cerr << "[usb] Refusing read-write mount\n"; return false;
+            LOG_W("Refusing to adopt read-write USB mount"); return false;
         }
 
     } else {
         if (fs::is_empty(path_, ec) == false || ec.value() != 0) {
-            std::cerr << "[usb] Mount directory not empty\n";
+            LOG_E("[usb] Mount directory not empty");
             return false;
         }
         if (::mount(device.node.c_str(), path_.c_str(), "vfat", MS_RDONLY | MS_NODEV | MS_NOSUID | MS_NOEXEC, nullptr) != 0) {
-            std::cerr << "[usb] mount " << device.node << ": " << std::strerror(errno) << '\n'; return false;
+            LOG_E("[usb] mount ", device.node, ": ", std::strerror(errno)); return false;
         }
     }
 
@@ -94,6 +94,7 @@ bool MountManager::mount(const Device& device) {
     }
     device_ = device.number;
     owned_ = true;
+    LOG_I("USB mounted read-only: ", device.node, " -> ", path_);
 
     return true;
 }
@@ -105,7 +106,7 @@ void MountManager::release(bool physicallyRemoved) {
 
     // Match ownership again: never unmount a replacement device at the same path.
     if (mountedAt(path_, device_) == 1 && ::umount2(path_.c_str(), physicallyRemoved ? MNT_DETACH : 0) != 0) {
-        std::cerr << "[usb] unmount: " << std::strerror(errno) << '\n';
+        LOG_E("[usb] unmount: ", std::strerror(errno));
     }
     owned_ = false;
     device_ = 0;

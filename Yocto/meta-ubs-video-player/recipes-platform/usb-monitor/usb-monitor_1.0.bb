@@ -12,6 +12,7 @@ SRC_URI = " \
     file://src/ \
     file://usb-monitor.service \
     file://Constants.h \
+    file://Logger.h \
 "
 
 S = "${WORKDIR}"

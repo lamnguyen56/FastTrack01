@@ -1,3 +1,6 @@
+# Use the BSP's full KMS overlay for Qt EGLFS on the HDMI display.
+VC4DTBO:raspberrypi3-64 = "vc4-kms-v3d"
+
 # Stock BSP overlay: SPI0 CE0, GPIO25. RS485 is independent.
 ENABLE_SPI_BUS:raspberrypi3-64 = "1"
 CAN0_INTERRUPT_PIN:raspberrypi3-64 = "25"

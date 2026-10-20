@@ -51,3 +51,6 @@ Thumbs.db
 !/Yocto/meta-ubs-video-player/
 !/Yocto/tools/
 !/Docs/
+
+# Local Wi-Fi credentials; keep out of Git.
+/Yocto/meta-ubs-video-player/recipes-connectivity/wifi/files/private/

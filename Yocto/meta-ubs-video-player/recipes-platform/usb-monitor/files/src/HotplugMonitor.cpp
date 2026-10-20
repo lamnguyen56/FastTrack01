@@ -9,7 +9,7 @@
 #include <sys/select.h>
 #include <cerrno>
 #include <cstring>
-#include <iostream>
+#include "Logger.h"
 
 namespace usb {
 namespace {
@@ -87,6 +87,7 @@ bool HotplugMonitor::initialize() {
         return false;
     }
 
+    LOG_I("USB hotplug subscription initialized");
     fd_ = udev_monitor_get_fd(monitor_);
     return fd_ >= 0 && fd_ < FD_SETSIZE;
 }
@@ -106,14 +107,14 @@ std::vector<Device> HotplugMonitor::enumerate() const {
     // First select block devices, then ask libudev to collect their sysfs entries.
     const int filterStatus = udev_enumerate_add_match_subsystem(enumeration, "block");
     if (filterStatus < 0) {
-        std::cerr << "[usb] Enumeration filter failed\n";
+        LOG_E("[usb] Enumeration filter failed");
         udev_enumerate_unref(enumeration);
         return devices;
     }
 
     const int scanStatus = udev_enumerate_scan_devices(enumeration);
     if (scanStatus < 0) {
-        std::cerr << "[usb] Device enumeration failed\n";
+        LOG_E("[usb] Device enumeration failed");
         udev_enumerate_unref(enumeration);
         return devices;
     }
@@ -132,6 +133,7 @@ std::vector<Device> HotplugMonitor::enumerate() const {
         }
     }
 
+    LOG_D("Startup/reselection enumeration: ", devices.size(), " block devices");
     udev_enumerate_unref(enumeration);
     return devices;
 }
@@ -183,6 +185,7 @@ HotplugMonitor::WaitResult HotplugMonitor::wait(Event& event, int timeoutMs) {
 
     // Copy values while the event is alive; callers never receive borrowed pointers.
     event.device = describe(device);
+    LOG_D("Hotplug action=", action, " node=", event.device.node, " sysfs=", event.device.sysPath);
     udev_device_unref(device);
     return WaitResult::EventReady;
 }

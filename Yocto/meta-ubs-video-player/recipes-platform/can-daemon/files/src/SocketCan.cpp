@@ -10,7 +10,7 @@
 #include <linux/can/raw.h>
 #include <unistd.h>
 #include <cstring>
-#include <iostream>
+#include "Logger.h"
 
 namespace canbus {
 
@@ -46,7 +46,7 @@ bool SocketCan::send(const can_frame& frame) {
     if (::write(fd_, &frame, sizeof(frame)) == static_cast<ssize_t>(sizeof(frame))) {
         return true;
     }
-    std::cerr << "[can] Frame transmission failed\n";
+    LOG_E("[can] Frame transmission failed");
 
     return false;
 }

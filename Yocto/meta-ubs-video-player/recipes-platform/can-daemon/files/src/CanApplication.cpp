@@ -10,7 +10,7 @@
 #include <csignal>
 #include <chrono>
 #include <thread>
-#include <iostream>
+#include "Logger.h"
 
 namespace canbus {
 
@@ -38,9 +38,10 @@ int CanApplication::run() {
     SocketCan can;
     IpcChannel ipc;
     if (can.open(FastTrack::DEFAULT_CAN_INTERFACE) == false || ipc.open() == false) {
-        std::cerr << "[can] Cannot initialize CAN/IPC sockets\n";
+        LOG_E("[can] Cannot initialize CAN/IPC sockets");
         return 1;
     }
+    LOG_I("CAN service started: ", FastTrack::DEFAULT_CAN_INTERFACE);
     while (running != 0) {
         can_frame frame{};
         FastTrack::CanCommandPacket command{};

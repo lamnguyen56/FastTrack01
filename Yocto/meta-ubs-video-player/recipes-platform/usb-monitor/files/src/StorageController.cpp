@@ -4,7 +4,7 @@
  */
 
 #include "StorageController.h"
-#include <iostream>
+#include "Logger.h"
 
 namespace usb {
 
@@ -47,7 +47,7 @@ void StorageController::add(const Device& device) {
         return;
     }
 
-    std::cout << "[usb] Scanning " << device.node << '\n';
+    LOG_I("[usb] Scanning ", device.node);
 }
 
 void StorageController::onDevice(const Event& event) {
@@ -67,6 +67,7 @@ void StorageController::release(bool removed) {
     }
 
     // Invalidate the worker before clearing publication and releasing the mount.
+    LOG_I("Releasing USB session: ", activePath_, ", physically removed=", removed);
     scanner_.cancel();
     playlist_.clear();
     mount_.release(removed);
@@ -83,10 +84,11 @@ void StorageController::poll() {
     // A completed result from removed storage must never restore a stale playlist.
     if (activePath_.empty() == false) {
         if (result->valid == true) {
+            LOG_I("USB scan complete: ", result->files.size(), " media files");
             playlist_.write(result->files);
         } else {
             playlist_.clear();
-            std::cerr << "[usb] Scan failed; playlist cleared\n";
+            LOG_E("USB scan failed; playlist cleared");
         }
     } else {
         enumerate_ = true;

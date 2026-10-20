@@ -67,3 +67,42 @@ g++ -std=c++17 -Wall -Wextra -Werror -Icommon/files \
 ```
 
 Tests cover immediate/late/absent CAN interfaces, failed CAN configuration, media filtering/sort, symlink skipping, cancellation missing/empty scan directories, CAN field mapping and status endianness. Hardware hotplug, physical CAN, service startup and actual mounts still need target validation.
+
+## Logging and journal
+
+`common/files/Logger.h` is a header-only C++17 logger. It writes all levels to stdout and flushes every line. The API accepts streamable arguments, not printf formatting:
+
+```cpp
+#include "Logger.h"
+LOG_I("USB ready at ", mountPath);
+LOG_D("Media count=", files.size());
+LOG_W("USB not eligible");
+LOG_E("Mount failed: ", errorMessage);
+```
+
+Set `LOG_LEVEL` to `DEBUG`, `INFO`, `WARN`, `ERROR` or `OFF` before startup. Default and unknown values use INFO. A level includes itself and more severe messages; suppressed macro arguments are not evaluated. Runtime changes are available through `logging::setLevel(logging::Level::Debug)`. The logger is thread-safe within a process, but is not signal-safe.
+
+Both platform service units explicitly use `StandardOutput=journal`, `StandardError=journal`, a service-specific `SyslogIdentifier`, and `Environment=LOG_LEVEL=INFO`. Journal priorities are not derived from text labels; read the `[DEBUG]`/`[INFO]`/`[WARN]`/`[ERROR]` labels instead of expecting `journalctl -p` to filter logger severity.
+
+To enable USB debug logs on an already deployed Pi, use a systemd drop-in:
+
+```bash
+sudo systemctl edit usb-monitor.service
+```
+
+```ini
+[Service]
+Environment=LOG_LEVEL=DEBUG
+```
+
+Then restart and follow the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart usb-monitor.service
+journalctl -u usb-monitor.service -f -o cat
+```
+
+For CAN, use `can-daemon.service`. Journal retention across reboot follows the target's journald configuration; these units do not enable persistent disk logging. Restarting a service interrupts its work; stop playback before restarting the USB service.
+
+The combined CTest runner also verifies stdout-only output, severity/OFF filtering, disabled argument evaluation and concurrent logger lines.

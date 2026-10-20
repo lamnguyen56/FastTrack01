@@ -10,5 +10,10 @@ IMAGE_INSTALL:append = " \
     ubs-video-player \
     can-utils \
     usbutils \
+    wifi-config \
+    openssh-sftp-server \
 "
 
+
+# Development access over Wi-Fi, including SFTP for modern scp clients.
+IMAGE_FEATURES += "ssh-server-openssh"

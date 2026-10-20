@@ -8,7 +8,7 @@
 #include <cctype>
 #include <filesystem>
 #include <chrono>
-#include <iostream>
+#include "Logger.h"
 
 namespace usb {
 
@@ -80,7 +80,7 @@ bool MediaScanner::start(const std::string& path) {
     try {
         job_ = std::async(std::launch::async, &MediaScanner::scan, path, cancel_);
     } catch (const std::exception& e) {
-        std::cerr << "[usb] Cannot start scan: " << e.what() << '\n';
+        LOG_E("[usb] Cannot start scan: ", e.what());
         return false;
     }
     return true;
@@ -106,7 +106,7 @@ std::optional<ScanResult> MediaScanner::poll() {
         }
         return result;
     } catch (const std::exception& e) {
-        std::cerr << "[usb] Scan error: " << e.what() << '\n';
+        LOG_E("[usb] Scan error: ", e.what());
         return ScanResult{};
     }
 

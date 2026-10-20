@@ -5,7 +5,7 @@
 
 #include "PlaylistWriter.h"
 #include <fstream>
-#include <iostream>
+#include "Logger.h"
 
 namespace usb {
 
@@ -17,7 +17,7 @@ bool PlaylistWriter::write(const std::vector<std::string>& files) const {
     }
     out.flush();
     if (out.fail() == true) {
-        std::cerr << "[usb] Cannot write playlist " << path_ << '\n';
+        LOG_E("[usb] Cannot write playlist ", path_);
     }
 
     return out.fail() == false;

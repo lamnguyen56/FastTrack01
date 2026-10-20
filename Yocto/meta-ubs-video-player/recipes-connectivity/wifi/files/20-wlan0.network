@@ -1,0 +1,13 @@
+[Match]
+Name=wlan0
+
+[Link]
+RequiredForOnline=no
+
+[Network]
+DHCP=ipv4
+IPv6AcceptRA=no
+
+[DHCPv4]
+ClientIdentifier=mac
+UseDNS=yes

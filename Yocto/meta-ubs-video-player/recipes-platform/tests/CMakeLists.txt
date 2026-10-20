@@ -17,6 +17,7 @@ add_executable(usb-scan-test
     ../usb-monitor/tests/scan_test.cpp
     ../usb-monitor/files/src/MediaScanner.cpp
 )
+target_include_directories(usb-scan-test PRIVATE ../common/files)
 target_link_libraries(usb-scan-test PRIVATE Threads::Threads)
 
 add_executable(can-codec-test
@@ -34,3 +35,11 @@ add_test(NAME can-codec COMMAND can-codec-test)
 add_test(NAME can-setup COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/../can-daemon/tests/setup_test.py)
 set_tests_properties(usb-scan can-codec can-setup PROPERTIES TIMEOUT 30)
+
+add_executable(logger-test logger_test.cpp)
+target_include_directories(logger-test PRIVATE ../common/files)
+target_link_libraries(logger-test PRIVATE Threads::Threads)
+target_compile_options(logger-test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME logger-output COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/logger_output_test.py $<TARGET_FILE:logger-test>)
+set_tests_properties(logger-output PROPERTIES TIMEOUT 30)

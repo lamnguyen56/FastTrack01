@@ -8,7 +8,7 @@
 #include "StorageController.h"
 #include "Constants.h"
 #include <csignal>
-#include <iostream>
+#include "Logger.h"
 
 namespace usb {
 
@@ -43,12 +43,13 @@ int UsbApplication::run() {
     std::signal(SIGTERM, stop);
     HotplugMonitor hotplug;
     if (hotplug.initialize() == false) {
-        std::cerr << "[usb] Cannot initialize udev monitor\n";
+        LOG_E("[usb] Cannot initialize udev monitor");
         return 1;
     }
     StorageController storage(FastTrack::DEFAULT_USB_MOUNT_POINT, "/tmp/usb_playlist.txt");
 
     // Subscribe before enumeration; startup insertions remain queued.
+    LOG_I("USB service started; mount path=", FastTrack::DEFAULT_USB_MOUNT_POINT);
     enumerate(hotplug, storage);
     while (running != 0) {
         Event event;

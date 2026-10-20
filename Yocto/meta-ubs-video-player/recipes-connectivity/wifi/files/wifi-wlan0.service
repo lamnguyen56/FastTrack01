@@ -1,0 +1,17 @@
+[Unit]
+Description=Wi-Fi association on wlan0
+Wants=systemd-networkd.service systemd-resolved.service
+After=systemd-udevd.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# Keep the process in the foreground so systemd can supervise it.
+ExecStart=@SBINDIR@/wpa_supplicant -i wlan0 -D nl80211 -c /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

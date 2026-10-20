@@ -23,6 +23,8 @@ DEPENDS = " \
 
 RDEPENDS:${PN} += " \
     qtbase-plugins \
+    ttf-dejavu-sans \
+    ttf-dejavu-sans-mono \
     qtdeclarative-qmlplugins \
     qtquickcontrols2-qmlplugins \
     qtmultimedia-plugins \

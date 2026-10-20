@@ -5,6 +5,10 @@ Wants=systemd-udevd.service
 
 [Service]
 Type=simple
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=usb-monitor
+Environment=LOG_LEVEL=INFO
 ExecStart=/usr/bin/usb-monitor
 Restart=always
 RestartSec=2s
