@@ -47,6 +47,51 @@ int main(int argc, char** argv) {
     for (const QString& path : {first, second, third, outside}) {
         publish(path, "dummy media; playback is outside this core test");
     }
+    // Completion policy is separate from explicit next/previous transport commands.
+    {
+        UsbPlaylistModel tracks;
+        tracks.replaceFiles({first, second});
+        PlayerController controller(tracks);
+        int autoPlays = 0;
+        int autoStops = 0;
+        qint64 replaySeek = -1;
+        QObject::connect(&controller, &PlayerController::playRequested, [&]() { ++autoPlays; });
+        QObject::connect(&controller, &PlayerController::stopRequested, [&]() { ++autoStops; });
+        QObject::connect(&controller, &PlayerController::seekRequested, [&](qint64 value) { replaySeek = value; });
+        assert(controller.autoAdvance() == true);
+        controller.setAutoAdvance(false);
+        controller.reportPlayback(true, true);
+        controller.reportDuration(1000);
+        controller.reportPosition(1000);
+        controller.handleEndOfMedia();
+        assert(controller.currentIndex() == 0);
+        assert(controller.source().toLocalFile() == first);
+        assert(controller.position() == 1000);
+        assert(controller.isPlaying() == false);
+        assert(controller.isFinished() == true);
+        assert(autoPlays == 0 && autoStops == 0); // Retain source/final frame.
+        controller.handleEndOfMedia();
+        assert(autoPlays == 0); // Duplicate completion is ignored while held.
+        controller.setAutoAdvance(true);
+        assert(autoPlays == 0); // Enabling after completion does not unexpectedly play.
+        controller.play();
+        assert(replaySeek == 0 && autoPlays == 1);
+        assert(controller.isFinished() == false);
+        controller.handleEndOfMedia();
+        assert(controller.currentIndex() == 1 && autoPlays == 2);
+        controller.handleEndOfMedia();
+        assert(controller.currentIndex() == 0 && autoPlays == 3); // Wrap last to first.
+        controller.setAutoAdvance(false);
+        controller.next();
+        assert(controller.currentIndex() == 1 && autoPlays == 4); // Manual next still plays.
+        tracks.replaceFiles({second});
+        controller.setAutoAdvance(true);
+        controller.handleEndOfMedia();
+        assert(controller.currentIndex() == 0 && autoPlays == 5); // One-file repeat.
+        tracks.replaceFiles({});
+        controller.handleEndOfMedia();
+        assert(controller.currentIndex() == -1 && autoPlays == 5);
+    }
     const QString ignored = root + "/notes.txt";
     publish(ignored, "not a media file");
     const QString alias = root + "/alias.mp4";

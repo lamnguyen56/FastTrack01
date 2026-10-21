@@ -14,6 +14,8 @@ class PlayerController : public QObject {
     Q_PROPERTY(qint64 duration READ duration NOTIFY timelineChanged)
     Q_PROPERTY(bool playing READ isPlaying NOTIFY playbackChanged)
     Q_PROPERTY(bool seekable READ isSeekable NOTIFY playbackChanged)
+    Q_PROPERTY(bool autoAdvance READ autoAdvance WRITE setAutoAdvance NOTIFY autoAdvanceChanged)
+    Q_PROPERTY(bool finished READ isFinished NOTIFY playbackChanged)
     Q_PROPERTY(QString errorText READ errorText NOTIFY errorChanged)
 
 public:
@@ -27,6 +29,12 @@ public:
     qint64 duration() const; ///< Decoder duration in milliseconds; zero until known.
     bool isPlaying() const; ///< True only after the media engine reports playing.
     bool isSeekable() const; ///< Whether the active media engine supports seeking.
+    bool autoAdvance() const; ///< Whether end of media starts the next track.
+    bool isFinished() const; ///< True while the selected track is held at its end.
+    /** @brief Set the end-of-media policy; changing it does not start playback. */
+    void setAutoAdvance(bool enabled);
+    /** @brief Advance and play, or retain the current selection at end of media. */
+    Q_INVOKABLE void handleEndOfMedia();
     QString errorText() const; ///< Current decoder/backend error shown on the UI.
 
     /** @brief Select a valid row and request playback; invalid rows are ignored. */
@@ -61,6 +69,7 @@ signals:
     void selectionChanged(); ///< Update selected row and title.
     void timelineChanged(); ///< Update position and duration bindings.
     void playbackChanged(); ///< Update actual playing and seeking capabilities.
+    void autoAdvanceChanged(); ///< Refresh the UI playback policy switch.
     void errorChanged(); ///< Update the visible error text.
     void playRequested(); ///< Ask the QML media engine to play.
     void pauseRequested(); ///< Ask the QML media engine to pause.
@@ -78,6 +87,8 @@ private:
     int currentIndex_ = -1; ///< Empty selection sentinel.
     qint64 position_ = 0; ///< Last reported playback position.
     qint64 duration_ = 0; ///< Last reported media duration.
+    bool autoAdvance_ = true; ///< Preserve the previous automatic-next default per app session.
+    bool finished_ = false; ///< Retain end state until explicit playback or source replacement.
     bool playing_ = false; ///< Last reported media state.
     bool seekable_ = false; ///< Last reported seeking capability.
     QString errorText_; ///< Current backend error; cleared when choosing media.

@@ -88,7 +88,7 @@ on the Pi; those require the target checks above.
 
 ## Headless integration test
 
-With Qt5/Qt6 Core development files installed on the host:
+With Qt5/Qt6 Core and Qml development files installed on the host:
 
 ```sh
 cmake -S meta-usb-video-player/recipes-app/usb-video-player/tests -B /tmp/usb-ui-core-tests
@@ -109,9 +109,12 @@ native_qt="$BUILDDIR/tmp/sysroots-components/x86_64/qtbase-native/usr"
 cmake -S "$BUILDDIR/../meta-usb-video-player/recipes-app/usb-video-player/tests" \
     -B /tmp/usb-ui-core-tests \
     -DCMAKE_PREFIX_PATH="$native_qt" \
-    -DOE_QMAKE_PATH_EXTERNAL_HOST_BINS="$native_qt/bin"
+    -DOE_QMAKE_PATH_EXTERNAL_HOST_BINS="$native_qt/bin" \
+    -DQt5Network_DIR="$native_qt/lib/cmake/Qt5Network" \
+    -DQt5Qml_DIR="$BUILDDIR/tmp/sysroots-components/x86_64/qtdeclarative-native/usr/lib/cmake/Qt5Qml"
 cmake --build /tmp/usb-ui-core-tests -j2
-ctest --test-dir /tmp/usb-ui-core-tests --output-on-failure --no-tests=error
+LD_LIBRARY_PATH="$native_qt/lib:$BUILDDIR/tmp/sysroots-components/x86_64/qtdeclarative-native/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    ctest --test-dir /tmp/usb-ui-core-tests --output-on-failure --no-tests=error
 ```
 
 The separate platform test suite also exercises atomic PlaylistWriter publication.
@@ -241,3 +244,98 @@ the installed text fonts. Icon changes are included in qml.qrc and embedded in t
 player executable, so deploy-process.sh app can update them without a new image.
 Check previous/next, seek buttons, Play/Pause state changes and playlist selection
 on the target after deployment.
+
+## Automatic next track
+
+AUTO NEXT in the transport bar controls only end-of-media behavior. It defaults
+to enabled on each application start, preserving the previous playlist behavior;
+the choice is not persisted to disk.
+
+- Enabled: completion selects and plays the next file, wrapping at the end. A
+  one-file playlist replays that file.
+- Disabled: completion retains the selection/source and does not request playback
+  or stop/clear the output. Qt5 VideoOutput.LastFrame preserves the final frame.
+- Play after held completion replays from the start. Manual Next/Previous always
+  selects and plays regardless of AUTO NEXT. Enabling the switch after completion
+  does not start playback until the user explicitly plays or selects a file.
+
+The shared C++ controller owns the policy for both media adapters. Final-frame
+retention is configured on the production Qt5 backend; the optional Qt6 desktop
+adapter has the selection policy but no equivalent frame-retention configuration
+for its older supported API. Verify final-frame display on Pi with the hardware
+decoder, plus end-of-list wrapping, manual controls and USB removal at completion.
+The core tests exercise policy and signal behavior, not video rendering.
+
+### Asynchronous media handoff
+
+PlaybackCoordinator.qml serializes Play and end-of-media handling for both Qt
+adapters. Completion is deferred until the old backend callback has returned.
+Play remains pending during LoadingMedia and is attempted outside status callbacks
+only when the requested source matches both the controller and backend and the
+backend reports a playable status. The request is consumed when PlayingState is
+reported. Pause, Stop, errors and source replacement invalidate queued requests.
+No fixed loading delay or busy retry timer is used.
+
+The AUTO NEXT card is anchored to the bottom-right of the control bar independently
+of the centered transport buttons. It shows PLAY NEXT VIDEO or STOP AT END and a
+font-independent toggle indicator.
+
+The headless async transport test instantiates the actual QML coordinator with
+mock backend objects. It covers delayed media readiness, deferred EOS, automatic
+next playback intent, stale sources, cancellation and repeated requests. It does
+not replace Pi checks with the real GStreamer backend: verify automatic next and
+last-to-first wrap, a one-file playlist, Pause during loading, rapid manual Next,
+and AUTO NEXT disabled retaining the last frame.
+
+Qt5 adapter readiness must use MediaPlayer.Loaded, Buffered and Buffering. The
+Qt6 adapter uses LoadedMedia, BufferedMedia and BufferingMedia. These enum names
+are backend API differences, not interchangeable spellings. The mock coordinator
+test exercises scheduling/cancellation, not Qt Multimedia enum resolution; verify
+adapter constants against the pinned Qt API and test playback on the Pi.
+
+### Layout stability
+
+Fixed-size AUTO NEXT content and playlist delegates use anchors/positioners rather
+than nested layouts. Playlist width and duration columns are bounded; long names
+elide without resizing the sidebar. The wrapped empty/error message has a width
+set by its containing panel, and the footer uses separate explicit regions for
+progress and centered transport controls. Flexible video/list items have explicit
+size hints rather than relying on their current geometry as layout hints.
+
+After deployment, check startup, USB insert/remove, long filenames, duration and
+selection changes, decoder errors and AUTO NEXT toggling. Watch the journal for
+recursive rearrange warnings. Syntax/build checks do not execute the Qt Quick
+layout engine; absence of runtime warnings must be confirmed on the Pi.
+
+## Responsive screen sizing
+
+UiMetrics.qml converts design units through u(value), using the current window
+width and height. The 1920x1080 landscape and 1080x1920 portrait values are reference
+coordinate systems, not fixed window sizes. The window starts at Screen.width and
+Screen.height; removing the old minimum dimensions permits smaller screens.
+
+Panel sizes use fractions of available content space: landscape is approximately
+84% video / 16% playlist; portrait stacks them at 75% / 25% of available height.
+Gaps are subtracted before splitting. Header status badges occupy a separate row
+in portrait, and the footer reserves an extra row above the bottom-right AUTO NEXT
+card so it cannot overlap the centered transport controls.
+
+Fonts, icons, margins, radii, border widths, control padding and slider dimensions
+use the shared scale. Font-independent icon paths still use their internal 24x24
+vector coordinate system and are scaled by iconSize. Zero offsets, fractions,
+media timestamps and animation durations are not pixel dimensions.
+
+The responsive-metrics test loads the real UiMetrics resource and checks scale
+and orientation at 480x320, 800x480, 1280x720, 1920x1080, 2560x720, 600x1024,
+1080x1920 and 480x800, plus reference/double-reference sizes. These checks do not
+render the complete UI. Verify real text/font rounding, clipping, portrait layout,
+resize behavior and absence of layout warnings on the display. Proportional
+scaling cannot guarantee readable text or comfortable touch targets on an
+arbitrarily small physical screen.
+
+The reference now matches the original compact control sizes on the Pi's 1080p
+HDMI display. Relative scaling remains enabled without a fixed pixel cap: at
+1920x1080 the header/footer use approximately 56/112 logical pixels and controls
+retain their earlier proportions. At other resolutions all chrome scales from
+that reference, while most available width is reserved for video. The playlist
+fraction is 300/1920 rather than the previous 30% sidebar.

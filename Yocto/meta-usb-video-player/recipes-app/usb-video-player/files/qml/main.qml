@@ -1,16 +1,21 @@
 import QtQuick 2.15
+import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 ApplicationWindow {
     id: rootWindow
     visible: true
-    width: 1024
-    height: 600
-    minimumWidth: 900
-    minimumHeight: 520
+    width: Screen.width
+    height: Screen.height
     title: qsTr("FastTrack Automotive Infotainment")
     color: "#0B0E14" // Deep Cockpit Dark
+
+    UiMetrics {
+        id: ui
+        viewportWidth: rootWindow.width
+        viewportHeight: rootWindow.height
+    }
 
     // All state comes from the actual USB model and media engine.
     readonly property bool isPlaying: playerController.playing
@@ -25,7 +30,7 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 56
+        height: ui.headerHeight
         color: "#121620"
 
         // Bottom border gradient
@@ -33,7 +38,7 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            height: 1
+            height: ui.u(1)
             gradient: Gradient {
                 orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "transparent" }
@@ -43,28 +48,31 @@ ApplicationWindow {
             }
         }
 
-        RowLayout {
+        Item {
             anchors.fill: parent
-            anchors.leftMargin: 20
-            anchors.rightMargin: 20
-            spacing: 16
+            anchors.leftMargin: ui.u(20)
+            anchors.rightMargin: ui.u(20)
 
             // Automotive System Title
             RowLayout {
-                spacing: 10
+                anchors.left: parent.left
+                anchors.top: ui.portrait ? parent.top : undefined
+                anchors.topMargin: ui.u(12)
+                anchors.verticalCenter: ui.portrait ? undefined : parent.verticalCenter
+                spacing: ui.u(10)
                 Rectangle {
-                    width: 32
-                    height: 32
-                    radius: 8
+                    Layout.preferredWidth: ui.u(32)
+                    Layout.preferredHeight: ui.u(32)
+                    radius: ui.u(8)
                     color: "#1A2333"
                     border.color: "#00F0FF"
-                    border.width: 1
+                    border.width: ui.u(1)
 
                     MediaIcon {
                         anchors.centerIn: parent
                         name: "car"
                         color: "#00F0FF"
-                        iconSize: 22
+                        iconSize: ui.u(22)
                     }
                 }
 
@@ -74,85 +82,95 @@ ApplicationWindow {
                         text: "FASTTRACK IVI MEDIA"
                         color: "#FFFFFF"
                         font.bold: true
-                        font.pixelSize: 15
-                        font.letterSpacing: 1.5
+                        font.pixelSize: ui.u(15)
+                        font.letterSpacing: ui.u(1.5)
                     }
                     Text {
                         text: "CAN BUS CONTROLLED SYSTEM"
                         color: "#00F0FF"
-                        font.pixelSize: 10
-                        font.letterSpacing: 1
+                        font.pixelSize: ui.u(10)
+                        font.letterSpacing: ui.u(1)
                     }
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            Row {
+                anchors.right: parent.right
+                anchors.bottom: ui.portrait ? parent.bottom : undefined
+                anchors.bottomMargin: ui.u(12)
+                anchors.verticalCenter: ui.portrait ? undefined : parent.verticalCenter
+                spacing: ui.u(16)
 
-            // USB Status Pill Badge
-            Rectangle {
-                height: 30
-                Layout.preferredWidth: usbLayout.implicitWidth + 20
-                radius: 15
-                color: "#1A202C"
-                border.color: usbReader.mounted ? "#00F0FF" : "#FF4D4F"
-                border.width: 1
+                // USB Status Pill Badge
+                Rectangle {
+                    height: ui.u(30)
+                    implicitWidth: usbLayout.implicitWidth + ui.u(20)
+                    implicitHeight: ui.u(30)
+                    radius: ui.u(15)
+                    color: "#1A202C"
+                    border.color: usbReader.mounted ? "#00F0FF" : "#FF4D4F"
+                    border.width: ui.u(1)
 
-                RowLayout {
-                    id: usbLayout
-                    anchors.centerIn: parent
-                    spacing: 6
+                    Row {
+                        id: usbLayout
+                        anchors.centerIn: parent
+                        spacing: ui.u(6)
 
-                    Rectangle {
-                        width: 8
-                        height: 8
-                        radius: 4
-                        color: usbReader.mounted ? "#00F0FF" : "#FF4D4F"
-                    }
+                        Rectangle {
+                            width: ui.u(8)
+                            height: ui.u(8)
+                            anchors.verticalCenter: parent.verticalCenter
+                            radius: ui.u(4)
+                            color: usbReader.mounted ? "#00F0FF" : "#FF4D4F"
+                        }
 
-                    Text {
-                        text: usbReader.mounted ? "USB: MOUNTED" : "USB: DISCONNECTED"
-                        color: usbReader.mounted ? "#00F0FF" : "#FFA39E"
-                        font.pixelSize: 11
-                        font.bold: true
-                        font.letterSpacing: 0.5
-                    }
-                }
-            }
-
-            // CAN Bus Status Pill Badge
-            Rectangle {
-                height: 30
-                Layout.preferredWidth: canLayout.implicitWidth + 20
-                radius: 15
-                color: (typeof canClient !== "undefined" && canClient.connected) ? "#122A2F" : "#2A1810"
-                border.color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
-                border.width: 1
-
-                RowLayout {
-                    id: canLayout
-                    anchors.centerIn: parent
-                    spacing: 6
-
-                    Rectangle {
-                        width: 8
-                        height: 8
-                        radius: 4
-                        color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
-
-                        // Pulsing glow animation
-                        SequentialAnimation on opacity {
-                            loops: Animation.Infinite
-                            NumberAnimation { from: 0.3; to: 1.0; duration: 800 }
-                            NumberAnimation { from: 1.0; to: 0.3; duration: 800 }
+                        Text {
+                            text: usbReader.mounted ? "USB: MOUNTED" : "USB: DISCONNECTED"
+                            color: usbReader.mounted ? "#00F0FF" : "#FFA39E"
+                            font.pixelSize: ui.u(11)
+                            font.bold: true
+                            font.letterSpacing: ui.u(0.5)
                         }
                     }
+                }
 
-                    Text {
-                        text: (typeof canClient !== "undefined" && canClient.connected) ? "CAN: IPC LISTENING" : "CAN: IPC UNAVAILABLE"
-                        color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
-                        font.pixelSize: 11
-                        font.bold: true
-                        font.letterSpacing: 0.5
+                // CAN Bus Status Pill Badge
+                Rectangle {
+                    height: ui.u(30)
+                    implicitWidth: canLayout.implicitWidth + ui.u(20)
+                    implicitHeight: ui.u(30)
+                    radius: ui.u(15)
+                    color: (typeof canClient !== "undefined" && canClient.connected) ? "#122A2F" : "#2A1810"
+                    border.color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
+                    border.width: ui.u(1)
+
+                    Row {
+                        id: canLayout
+                        anchors.centerIn: parent
+                        spacing: ui.u(6)
+
+                        Rectangle {
+                            width: ui.u(8)
+                            height: ui.u(8)
+                            anchors.verticalCenter: parent.verticalCenter
+                            radius: ui.u(4)
+                            color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
+
+                            // Pulsing glow animation
+                            SequentialAnimation on opacity {
+                                loops: Animation.Infinite
+                                NumberAnimation { from: 0.3; to: 1.0; duration: 800 }
+                                NumberAnimation { from: 1.0; to: 0.3; duration: 800 }
+                            }
+                        }
+
+                        Text {
+                            text: (typeof canClient !== "undefined" && canClient.connected) ? "CAN: IPC LISTENING" : "CAN: IPC UNAVAILABLE"
+                            color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
+                            font.pixelSize: ui.u(11)
+                            font.bold: true
+                            font.letterSpacing: ui.u(0.5)
+                        }
                     }
                 }
             }
@@ -162,87 +180,95 @@ ApplicationWindow {
     // ==========================================
     // 2. MAIN CONTENT AREA
     // ==========================================
-    RowLayout {
+    GridLayout {
+        id: mainContent
+        columns: ui.portrait ? 1 : 2
         anchors.top: headerBar.bottom
         anchors.bottom: controlBar.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: 14
-        spacing: 14
+        anchors.margins: ui.u(14)
+        rowSpacing: ui.panelGap
+        columnSpacing: ui.panelGap
 
         // --- Video Canvas Surface ---
         Rectangle {
             id: videoSurface
+            Layout.minimumWidth: 0
+            Layout.minimumHeight: 0
+            Layout.preferredWidth: ui.portrait ? mainContent.width : (mainContent.width - ui.panelGap) * (1 - ui.playlistWidthFraction)
+            Layout.preferredHeight: ui.portrait ? (mainContent.height - ui.panelGap) * ui.portraitVideoFraction : mainContent.height
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: 12
+            radius: ui.u(12)
             color: "#05070A"
             border.color: "#1E2638"
-            border.width: 1
+            border.width: ui.u(1)
             clip: true
 
             Loader {
                 id: videoLoader
                 anchors.fill: parent
-                anchors.margins: 2
+                anchors.margins: ui.u(2)
                 source: qtMajorVersion >= 6 ? "qrc:/ui/VideoSurfaceQt6.qml" : "qrc:/ui/VideoSurfaceQt5.qml"
             }
 
             // Cockpit HUD Corner brackets
             Rectangle {
                 anchors.top: parent.top; anchors.left: parent.left
-                width: 16; height: 2; color: "#00F0FF"
+                width: ui.u(16); height: ui.u(2); color: "#00F0FF"
             }
             Rectangle {
                 anchors.top: parent.top; anchors.left: parent.left
-                width: 2; height: 16; color: "#00F0FF"
+                width: ui.u(2); height: ui.u(16); color: "#00F0FF"
             }
             Rectangle {
                 anchors.top: parent.top; anchors.right: parent.right
-                width: 16; height: 2; color: "#00F0FF"
+                width: ui.u(16); height: ui.u(2); color: "#00F0FF"
             }
             Rectangle {
                 anchors.top: parent.top; anchors.right: parent.right
-                width: 2; height: 16; color: "#00F0FF"
+                width: ui.u(2); height: ui.u(16); color: "#00F0FF"
             }
             Rectangle {
                 anchors.bottom: parent.bottom; anchors.left: parent.left
-                width: 16; height: 2; color: "#00F0FF"
+                width: ui.u(16); height: ui.u(2); color: "#00F0FF"
             }
             Rectangle {
                 anchors.bottom: parent.bottom; anchors.left: parent.left
-                width: 2; height: 16; color: "#00F0FF"
+                width: ui.u(2); height: ui.u(16); color: "#00F0FF"
             }
             Rectangle {
                 anchors.bottom: parent.bottom; anchors.right: parent.right
-                width: 16; height: 2; color: "#00F0FF"
+                width: ui.u(16); height: ui.u(2); color: "#00F0FF"
             }
             Rectangle {
                 anchors.bottom: parent.bottom; anchors.right: parent.right
-                width: 2; height: 16; color: "#00F0FF"
+                width: ui.u(2); height: ui.u(16); color: "#00F0FF"
             }
 
             // Empty/loading/error state; decoded video is rendered underneath.
-            ColumnLayout {
+            Column {
+                id: emptyState
                 anchors.centerIn: parent
-                width: parent.width - 40
+                width: Math.max(0, parent.width - ui.u(40))
                 visible: playerController.errorText.length > 0 || videoLoader.item === null || videoLoader.item.hasVideo === false
-                spacing: 12
+                spacing: ui.u(12)
 
                 Rectangle {
-                    Layout.alignment: Qt.AlignHCenter
-                    width: 72
-                    height: 72
-                    radius: 36
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: ui.u(72)
+                    height: ui.u(72)
+                    radius: ui.u(36)
                     color: rootWindow.isPlaying ? "#003A4D" : "#141923"
                     border.color: rootWindow.isPlaying ? "#00F0FF" : "#324158"
-                    border.width: 2
+                    border.width: ui.u(2)
 
                     MediaIcon {
                         anchors.centerIn: parent
                         name: rootWindow.isPlaying ? "play" : "pause"
                         color: rootWindow.isPlaying ? "#00F0FF" : "#71829D"
-                        iconSize: 28
+                        iconSize: ui.u(28)
                     }
 
                     MouseArea {
@@ -253,22 +279,22 @@ ApplicationWindow {
                 }
 
                 Text {
-                    Layout.alignment: Qt.AlignHCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
                     text: playerController.errorText.length > 0 ? "PLAYBACK ERROR" : (usbPlaylist.count > 0 ? "PRESS PLAY" : "NO MEDIA")
                     color: rootWindow.isPlaying ? "#00F0FF" : "#A0AEC0"
                     font.bold: true
-                    font.pixelSize: 15
-                    font.letterSpacing: 1
+                    font.pixelSize: ui.u(15)
+                    font.letterSpacing: ui.u(1)
                 }
 
                 Text {
-                    Layout.alignment: Qt.AlignHCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
                     text: playerController.errorText.length > 0 ? playerController.errorText : (usbPlaylist.count > 0 ? "Select a video or press Play" : (usbReader.mounted ? "Waiting for playlist / no supported media files" : "Insert a USB drive containing videos"))
-                    Layout.fillWidth: true
+                    width: emptyState.width
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
                     color: "#55657E"
-                    font.pixelSize: 12
+                    font.pixelSize: ui.u(12)
                 }
             }
 
@@ -276,26 +302,34 @@ ApplicationWindow {
             Rectangle {
                 anchors.top: parent.top
                 anchors.left: parent.left
-                anchors.margins: 14
-                height: 28
-                width: currentTrackText.implicitWidth + 20
-                radius: 6
+                anchors.margins: ui.u(14)
+                height: ui.u(28)
+                width: Math.min(parent.width - ui.u(28), currentTrackText.implicitWidth + ui.u(32))
+                radius: ui.u(6)
                 color: "#18203099"
                 border.color: "#2D3748"
-                border.width: 1
+                border.width: ui.u(1)
 
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 6
+                Item {
+                    anchors.fill: parent
+                    anchors.leftMargin: ui.u(10)
+                    anchors.rightMargin: ui.u(10)
                     Rectangle {
-                        width: 6; height: 6; radius: 3
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: ui.u(6); height: ui.u(6); radius: ui.u(3)
                         color: rootWindow.isPlaying ? "#00F0FF" : "#888888"
                     }
                     Text {
                         id: currentTrackText
+                        anchors.left: parent.left
+                        anchors.leftMargin: ui.u(12)
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight
                         text: playerController.currentTitle.length > 0 ? playerController.currentTitle : "No media selected"
                         color: "#E2E8F0"
-                        font.pixelSize: 11
+                        font.pixelSize: ui.u(11)
                     }
                 }
             }
@@ -303,17 +337,21 @@ ApplicationWindow {
 
         // --- Playlist Drawer (Automotive Dark Glass Card) ---
         Rectangle {
-            Layout.preferredWidth: 300
+            Layout.minimumWidth: 0
+            Layout.minimumHeight: 0
+            Layout.preferredWidth: ui.portrait ? mainContent.width : (mainContent.width - ui.panelGap) * ui.playlistWidthFraction
+            Layout.maximumWidth: Layout.preferredWidth
+            Layout.preferredHeight: ui.portrait ? (mainContent.height - ui.panelGap) * (1 - ui.portraitVideoFraction) : mainContent.height
             Layout.fillHeight: true
-            radius: 12
+            radius: ui.u(12)
             color: "#121622"
             border.color: "#1E2638"
-            border.width: 1
+            border.width: ui.u(1)
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 14
-                spacing: 12
+                anchors.margins: ui.u(14)
+                spacing: ui.u(12)
 
                 // Header Playlist
                 RowLayout {
@@ -322,21 +360,21 @@ ApplicationWindow {
                         text: "USB PLAYLIST"
                         color: "#FFFFFF"
                         font.bold: true
-                        font.pixelSize: 13
-                        font.letterSpacing: 1
+                        font.pixelSize: ui.u(13)
+                        font.letterSpacing: ui.u(1)
                     }
                     Item { Layout.fillWidth: true }
                     Rectangle {
-                        height: 20
-                        width: countText.implicitWidth + 12
-                        radius: 10
+                        implicitHeight: ui.u(20)
+                        implicitWidth: countText.implicitWidth + ui.u(12)
+                        radius: ui.u(10)
                         color: "#1B2436"
                         Text {
                             id: countText
                             anchors.centerIn: parent
                             text: usbPlaylist.count + " files"
                             color: "#00F0FF"
-                            font.pixelSize: 10
+                            font.pixelSize: ui.u(10)
                         }
                     }
                 }
@@ -344,21 +382,25 @@ ApplicationWindow {
                 // Playlist Items
                 ListView {
                     id: playlistView
+                    Layout.minimumWidth: 0
+                    Layout.minimumHeight: 0
+                    Layout.preferredWidth: ui.u(1)
+                    Layout.preferredHeight: ui.u(1)
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    spacing: 8
+                    spacing: ui.u(8)
 
                     model: usbPlaylist
 
                     delegate: Rectangle {
                         id: itemCard
                         width: playlistView.width
-                        height: 50
-                        radius: 8
+                        height: ui.u(50)
+                        radius: ui.u(8)
                         color: rootWindow.currentTrackIndex === index ? "#19283E" : (mouseArea.containsMouse ? "#182030" : "#151B27")
                         border.color: rootWindow.currentTrackIndex === index ? "#00F0FF" : "#242F42"
-                        border.width: 1
+                        border.width: ui.u(1)
 
                         Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -367,52 +409,64 @@ ApplicationWindow {
                             anchors.left: parent.left
                             anchors.top: parent.top
                             anchors.bottom: parent.bottom
-                            anchors.margins: 4
-                            width: 3
-                            radius: 1.5
+                            anchors.margins: ui.u(4)
+                            width: ui.u(3)
+                            radius: ui.u(1.5)
                             color: "#00F0FF"
                             visible: rootWindow.currentTrackIndex === index
                         }
 
-                        RowLayout {
+                        // Fixed card geometry: long names and duration changes only elide text.
+                        Item {
                             anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            spacing: 10
+                            anchors.leftMargin: ui.u(12)
+                            anchors.rightMargin: ui.u(12)
 
                             MediaIcon {
+                                id: trackIcon
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
                                 name: rootWindow.currentTrackIndex === index ? "play" : "folder"
                                 color: rootWindow.currentTrackIndex === index ? "#00F0FF" : "#718096"
-                                iconSize: 16
+                                iconSize: ui.u(16)
                             }
 
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
+                            Column {
+                                anchors.left: trackIcon.right
+                                anchors.leftMargin: ui.u(10)
+                                anchors.right: trackTime.left
+                                anchors.rightMargin: ui.u(10)
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: ui.u(2)
                                 Text {
+                                    width: parent.width
                                     text: model.title
                                     color: rootWindow.currentTrackIndex === index ? "#00F0FF" : "#E2E8F0"
                                     font.bold: rootWindow.currentTrackIndex === index
-                                    font.pixelSize: 12
+                                    font.pixelSize: ui.u(12)
                                     elide: Text.ElideRight
-                                    Layout.fillWidth: true
                                 }
                                 Text {
+                                    width: parent.width
                                     text: model.filePath
                                     elide: Text.ElideMiddle
-                                    Layout.fillWidth: true
                                     color: "#64748B"
-                                    font.pixelSize: 10
+                                    font.pixelSize: ui.u(10)
                                 }
                             }
 
                             Text {
+                                id: trackTime
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: ui.u(56)
+                                horizontalAlignment: Text.AlignRight
+                                elide: Text.ElideLeft
                                 text: rootWindow.currentTrackIndex === index ? playerController.formatTime(playerController.duration) : "--:--"
                                 color: "#8E9EB5"
-                                font.pixelSize: 11
+                                font.pixelSize: ui.u(11)
                             }
                         }
-
                         MouseArea {
                             id: mouseArea
                             anchors.fill: parent
@@ -434,8 +488,79 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 100
+        height: ui.footerHeight
         color: "#10141E"
+
+        // Independent bottom-right policy card; keep transport controls centered.
+        Button {
+            id: autoNextSwitch
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.rightMargin: ui.u(16)
+            anchors.bottomMargin: ui.u(10)
+            width: ui.u(184)
+            height: ui.u(50)
+            padding: ui.u(10)
+            checkable: true
+            checked: playerController.autoAdvance
+            hoverEnabled: true
+            Accessible.name: qsTr("Automatically play next video")
+            onToggled: playerController.autoAdvance = checked
+
+            background: Rectangle {
+                radius: ui.u(10)
+                color: autoNextSwitch.checked ? "#102B35" : "#161E2C"
+                border.width: ui.u(1)
+                border.color: autoNextSwitch.checked ? "#00B4D8" : "#334155"
+                opacity: autoNextSwitch.down ? 0.75 : 1
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
+
+            contentItem: Item {
+                Column {
+                    anchors.left: parent.left
+                    anchors.right: toggleTrack.left
+                    anchors.rightMargin: ui.u(10)
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: ui.u(2)
+                    Text {
+                        width: parent.width
+                        elide: Text.ElideRight
+                        text: qsTr("Auto next")
+                        color: autoNextSwitch.checked ? "#E0FCFF" : "#CBD5E1"
+                        font.pixelSize: ui.u(12)
+                        font.bold: true
+                    }
+                    Text {
+                        width: parent.width
+                        elide: Text.ElideRight
+                        text: autoNextSwitch.checked ? qsTr("PLAY NEXT VIDEO") : qsTr("STOP AT END")
+                        color: autoNextSwitch.checked ? "#67DCE7" : "#8292AA"
+                        font.pixelSize: ui.u(8)
+                        font.letterSpacing: ui.u(0.5)
+                    }
+                }
+
+                Rectangle {
+                    id: toggleTrack
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: ui.u(34)
+                    height: ui.u(20)
+                    radius: ui.u(10)
+                    color: autoNextSwitch.checked ? "#00B4D8" : "#3A485D"
+                    Rectangle {
+                        y: ui.u(3)
+                        x: ui.u(autoNextSwitch.checked ? 17 : 3)
+                        width: ui.u(14)
+                        height: ui.u(14)
+                        radius: ui.u(7)
+                        color: "#FFFFFF"
+                        Behavior on x { NumberAnimation { duration: 120 } }
+                    }
+                }
+            }
+        }
 
         // Top border with glowing accent
         Rectangle {
@@ -443,7 +568,7 @@ ApplicationWindow {
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
-            height: 1
+            height: ui.u(1)
             gradient: Gradient {
                 orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "transparent" }
@@ -452,26 +577,30 @@ ApplicationWindow {
             }
         }
 
-        ColumnLayout {
+        Item {
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
+            anchors.margins: ui.u(12)
 
-            // --- Custom Automotive Progress Slider ---
+            // Explicit footer row geometry avoids nested height-for-width recalculation.
             RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: ui.u(20)
+                spacing: ui.u(12)
 
                 Text {
                     text: playerController.formatTime(playerController.position)
                     color: "#00F0FF"
                     font.bold: true
-                    font.pixelSize: 12
+                    font.pixelSize: ui.u(12)
                     font.family: "DejaVu Sans Mono"
                 }
 
                 Slider {
                     id: progressSlider
+                    implicitHeight: ui.u(20)
+                    padding: ui.u(2)
                     Layout.fillWidth: true
                     from: 0
                     to: Math.max(1, playerController.duration)
@@ -484,18 +613,18 @@ ApplicationWindow {
                     background: Rectangle {
                         x: progressSlider.leftPadding
                         y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
-                        implicitWidth: 200
-                        implicitHeight: 6
+                        implicitWidth: ui.u(200)
+                        implicitHeight: ui.u(6)
                         width: progressSlider.availableWidth
                         height: implicitHeight
-                        radius: 3
+                        radius: ui.u(3)
                         color: "#1C2433"
 
                         // Active Progress Bar Gradient
                         Rectangle {
                             width: progressSlider.visualPosition * parent.width
                             height: parent.height
-                            radius: 3
+                            radius: ui.u(3)
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
                                 GradientStop { position: 0.0; color: "#0077B6" }
@@ -508,19 +637,19 @@ ApplicationWindow {
                     handle: Rectangle {
                         x: progressSlider.leftPadding + progressSlider.visualPosition * (progressSlider.availableWidth - width)
                         y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
-                        implicitWidth: 16
-                        implicitHeight: 16
-                        radius: 8
+                        implicitWidth: ui.u(16)
+                        implicitHeight: ui.u(16)
+                        radius: ui.u(8)
                         color: "#FFFFFF"
                         border.color: "#00F0FF"
-                        border.width: 3
+                        border.width: ui.u(3)
 
                         // Glowing hover effect ring
                         Rectangle {
                             anchors.centerIn: parent
-                            width: 26
-                            height: 26
-                            radius: 13
+                            width: ui.u(26)
+                            height: ui.u(26)
+                            radius: ui.u(13)
                             color: "#00F0FF"
                             opacity: progressSlider.pressed ? 0.4 : (progressSlider.hovered ? 0.2 : 0)
                             Behavior on opacity { NumberAnimation { duration: 150 } }
@@ -532,29 +661,34 @@ ApplicationWindow {
                     text: playerController.formatTime(playerController.duration)
                     color: "#8E9EB5"
                     font.bold: true
-                    font.pixelSize: 12
+                    font.pixelSize: ui.u(12)
                     font.family: "DejaVu Sans Mono"
                 }
             }
 
             // --- ICON-ONLY AUTOMOTIVE CONTROL BUTTONS ---
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 22
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: ui.portrait ? ui.u(52) : 0
+                height: ui.u(58)
+                spacing: ui.u(22)
 
                 // 1. Previous Track Button
                 Button {
                     id: prevBtn
+                    padding: ui.u(6)
+                    anchors.verticalCenter: parent.verticalCenter
                     Accessible.name: qsTr("Previous track")
-                    implicitWidth: 46
-                    implicitHeight: 46
+                    implicitWidth: ui.u(46)
+                    implicitHeight: ui.u(46)
                     hoverEnabled: true
 
                     background: Rectangle {
-                        radius: 23
+                        radius: ui.u(23)
                         color: prevBtn.down ? "#0E1726" : (prevBtn.hovered ? "#1E2B40" : "#151D2A")
                         border.color: prevBtn.hovered ? "#00F0FF" : "#28354A"
-                        border.width: 1.5
+                        border.width: ui.u(1.5)
                         Behavior on color { ColorAnimation { duration: 120 } }
                         Behavior on border.color { ColorAnimation { duration: 120 } }
                     }
@@ -562,7 +696,7 @@ ApplicationWindow {
                     contentItem: MediaIcon {
                         name: "previous"
                         color: prevBtn.hovered ? "#00F0FF" : "#CBD5E1"
-                        iconSize: 22
+                        iconSize: ui.u(22)
                     }
 
                     onClicked: playerController.previous()
@@ -571,16 +705,18 @@ ApplicationWindow {
                 // 2. Fast Backward -10s
                 Button {
                     id: rewBtn
+                    padding: ui.u(6)
+                    anchors.verticalCenter: parent.verticalCenter
                     Accessible.name: qsTr("Rewind 10 seconds")
-                    implicitWidth: 46
-                    implicitHeight: 46
+                    implicitWidth: ui.u(46)
+                    implicitHeight: ui.u(46)
                     hoverEnabled: true
 
                     background: Rectangle {
-                        radius: 23
+                        radius: ui.u(23)
                         color: rewBtn.down ? "#0E1726" : (rewBtn.hovered ? "#1E2B40" : "#151D2A")
                         border.color: rewBtn.hovered ? "#00F0FF" : "#28354A"
-                        border.width: 1.5
+                        border.width: ui.u(1.5)
                         Behavior on color { ColorAnimation { duration: 120 } }
                         Behavior on border.color { ColorAnimation { duration: 120 } }
                     }
@@ -588,7 +724,7 @@ ApplicationWindow {
                     contentItem: MediaIcon {
                         name: "rewind"
                         color: rewBtn.hovered ? "#00F0FF" : "#CBD5E1"
-                        iconSize: 22
+                        iconSize: ui.u(22)
                     }
 
                     onClicked: playerController.seekRelative(-10)
@@ -597,30 +733,32 @@ ApplicationWindow {
                 // 3. Central Glowing PLAY / PAUSE Button (Larger & Illuminated)
                 Button {
                     id: playPauseBtn
+                    padding: ui.u(6)
+                    anchors.verticalCenter: parent.verticalCenter
                     Accessible.name: rootWindow.isPlaying ? qsTr("Pause") : qsTr("Play")
-                    implicitWidth: 58
-                    implicitHeight: 58
+                    implicitWidth: ui.u(58)
+                    implicitHeight: ui.u(58)
                     hoverEnabled: true
 
                     background: Rectangle {
-                        radius: 29
+                        radius: ui.u(29)
                         gradient: Gradient {
                             orientation: Gradient.Vertical
                             GradientStop { position: 0.0; color: playPauseBtn.hovered ? "#00E5FF" : (playPauseBtn.down ? "#0088AA" : "#00B4D8") }
                             GradientStop { position: 1.0; color: playPauseBtn.hovered ? "#0077B6" : (playPauseBtn.down ? "#005577" : "#005080") }
                         }
                         border.color: "#FFFFFF"
-                        border.width: playPauseBtn.down ? 2 : 1.5
+                        border.width: ui.u(playPauseBtn.down ? 2 : 1.5)
 
                         // Neon Aura Ring
                         Rectangle {
                             anchors.centerIn: parent
-                            width: parent.width + 12
-                            height: parent.height + 12
+                            width: parent.width + ui.u(12)
+                            height: parent.height + ui.u(12)
                             radius: width / 2
                             color: "transparent"
                             border.color: "#00F0FF"
-                            border.width: 1.5
+                            border.width: ui.u(1.5)
                             opacity: playPauseBtn.hovered ? 0.8 : (rootWindow.isPlaying ? 0.5 : 0.25)
                             Behavior on opacity { NumberAnimation { duration: 180 } }
                         }
@@ -629,7 +767,7 @@ ApplicationWindow {
                     contentItem: MediaIcon {
                         name: rootWindow.isPlaying ? "pause" : "play"
                         color: "#FFFFFF"
-                        iconSize: 28
+                        iconSize: ui.u(28)
                     }
 
                     onClicked: playerController.toggle()
@@ -638,16 +776,18 @@ ApplicationWindow {
                 // 4. Fast Forward +10s
                 Button {
                     id: fwdBtn
+                    padding: ui.u(6)
+                    anchors.verticalCenter: parent.verticalCenter
                     Accessible.name: qsTr("Forward 10 seconds")
-                    implicitWidth: 46
-                    implicitHeight: 46
+                    implicitWidth: ui.u(46)
+                    implicitHeight: ui.u(46)
                     hoverEnabled: true
 
                     background: Rectangle {
-                        radius: 23
+                        radius: ui.u(23)
                         color: fwdBtn.down ? "#0E1726" : (fwdBtn.hovered ? "#1E2B40" : "#151D2A")
                         border.color: fwdBtn.hovered ? "#00F0FF" : "#28354A"
-                        border.width: 1.5
+                        border.width: ui.u(1.5)
                         Behavior on color { ColorAnimation { duration: 120 } }
                         Behavior on border.color { ColorAnimation { duration: 120 } }
                     }
@@ -655,7 +795,7 @@ ApplicationWindow {
                     contentItem: MediaIcon {
                         name: "forward"
                         color: fwdBtn.hovered ? "#00F0FF" : "#CBD5E1"
-                        iconSize: 22
+                        iconSize: ui.u(22)
                     }
 
                     onClicked: playerController.seekRelative(10)
@@ -664,16 +804,18 @@ ApplicationWindow {
                 // 5. Next Track Button
                 Button {
                     id: nextBtn
+                    padding: ui.u(6)
+                    anchors.verticalCenter: parent.verticalCenter
                     Accessible.name: qsTr("Next track")
-                    implicitWidth: 46
-                    implicitHeight: 46
+                    implicitWidth: ui.u(46)
+                    implicitHeight: ui.u(46)
                     hoverEnabled: true
 
                     background: Rectangle {
-                        radius: 23
+                        radius: ui.u(23)
                         color: nextBtn.down ? "#0E1726" : (nextBtn.hovered ? "#1E2B40" : "#151D2A")
                         border.color: nextBtn.hovered ? "#00F0FF" : "#28354A"
-                        border.width: 1.5
+                        border.width: ui.u(1.5)
                         Behavior on color { ColorAnimation { duration: 120 } }
                         Behavior on border.color { ColorAnimation { duration: 120 } }
                     }
@@ -681,7 +823,7 @@ ApplicationWindow {
                     contentItem: MediaIcon {
                         name: "next"
                         color: nextBtn.hovered ? "#00F0FF" : "#CBD5E1"
-                        iconSize: 22
+                        iconSize: ui.u(22)
                     }
 
                     onClicked: playerController.next()

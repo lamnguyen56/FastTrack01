@@ -23,6 +23,34 @@ bool PlayerController::isPlaying() const { return playing_; }
 
 bool PlayerController::isSeekable() const { return seekable_; }
 
+bool PlayerController::autoAdvance() const { return autoAdvance_; }
+
+bool PlayerController::isFinished() const { return finished_; }
+
+void PlayerController::setAutoAdvance(bool enabled) {
+    if (autoAdvance_ == enabled) {
+        return;
+    }
+    autoAdvance_ = enabled;
+    emit autoAdvanceChanged();
+    LOG_I("Auto advance: ", enabled ? "enabled" : "disabled");
+}
+
+void PlayerController::handleEndOfMedia() {
+    if (source_.isEmpty() == true || finished_ == true) {
+        return;
+    }
+
+    // Keep the source loaded: stopping/clearing here would discard the final image.
+    finished_ = true;
+    playing_ = false;
+    emit playbackChanged();
+    LOG_I("Track ended; auto advance=", autoAdvance_);
+    if (autoAdvance_ == true) {
+        next();
+    }
+}
+
 QString PlayerController::errorText() const { return errorText_; }
 
 void PlayerController::synchronizePlaylist() {
@@ -45,6 +73,7 @@ void PlayerController::setSelection(int index) {
         source_ = nextSource;
         position_ = 0;
         duration_ = 0;
+        finished_ = false;
         playing_ = false;
         seekable_ = false;
         errorText_.clear();
@@ -71,6 +100,12 @@ void PlayerController::selectTrack(int index) {
 void PlayerController::play() {
     if (source_.isEmpty() == true) {
         return;
+    }
+    // An explicit Play after completion replays the selected file from the start.
+    if (finished_ == true) {
+        finished_ = false;
+        emit seekRequested(0);
+        emit playbackChanged();
     }
     emit playRequested();
 }
