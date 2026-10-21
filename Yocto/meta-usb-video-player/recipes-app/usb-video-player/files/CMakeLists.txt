@@ -20,14 +20,19 @@ endif()
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Gui Qml Quick Multimedia REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Qml Quick Multimedia REQUIRED)
 
+include(src/PlayerCore.cmake)
+
 add_executable(${PROJECT_NAME}
     src/main.cpp
+    src/PlayerApplication.cpp
+    src/PlayerApplication.h
     src/CanClient/CanIpcClient.cpp
     src/CanClient/CanIpcClient.h
     qml/qml.qrc
 )
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    player-core
     Common::Headers
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui

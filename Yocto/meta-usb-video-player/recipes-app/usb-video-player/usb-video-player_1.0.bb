@@ -27,6 +27,7 @@ RDEPENDS:${PN} += " \
     qtmultimedia-qmlplugins \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
+    gstreamer1.0-libav \
     can-daemon \
     usb-monitor \
 "

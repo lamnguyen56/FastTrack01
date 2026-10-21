@@ -65,7 +65,7 @@ void CanIpcClient::onSocketDataReady() {
 
     qDebug() << "[CanIpcClient] RX CMD:" << cmd.commandId << "SEEK:" << cmd.seekCommand;
 
-    // Dispatch as Qt Signals -> QML Connections {}
+    // PlayerApplication routes these signals to the shared PlayerController.
     switch (static_cast<FastTrack::PlayerCommand>(cmd.commandId)) {
         case FastTrack::PlayerCommand::PLAY:     emit commandPlay();  break;
         case FastTrack::PlayerCommand::PAUSE:    emit commandPause(); break;

@@ -46,7 +46,7 @@ int UsbApplication::run() {
         LOG_E("[usb] Cannot initialize udev monitor");
         return 1;
     }
-    StorageController storage(FastTrack::DEFAULT_USB_MOUNT_POINT, "/tmp/usb_playlist.txt");
+    StorageController storage(FastTrack::DEFAULT_USB_MOUNT_POINT, FastTrack::DEFAULT_USB_PLAYLIST_PATH);
 
     // Subscribe before enumeration; startup insertions remain queued.
     LOG_I("USB service started; mount path=", FastTrack::DEFAULT_USB_MOUNT_POINT);

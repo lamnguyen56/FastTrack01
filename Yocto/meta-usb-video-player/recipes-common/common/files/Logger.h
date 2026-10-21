@@ -91,7 +91,11 @@ inline void write(Level level, const char* file, int line, Args&&... args) {
     const std::lock_guard<std::mutex> lock(outputMutex());
     const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::tm local{};
+#if defined(_WIN32)
+    localtime_s(&local, &now);
+#else
     localtime_r(&now, &local);
+#endif
     char timestamp[32]{};
     std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &local);
     std::string text = message.str();

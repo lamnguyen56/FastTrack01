@@ -45,3 +45,9 @@ target_compile_options(logger-test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME logger-output COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/logger_output_test.py $<TARGET_FILE:logger-test>)
 set_tests_properties(logger-output PROPERTIES TIMEOUT 30)
+
+add_executable(playlist-write-test playlist_write_test.cpp ../usb-monitor/files/src/PlaylistWriter.cpp)
+target_link_libraries(playlist-write-test PRIVATE Common::Headers)
+target_compile_options(playlist-write-test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME playlist-write COMMAND playlist-write-test)
+set_tests_properties(playlist-write PROPERTIES TIMEOUT 30)

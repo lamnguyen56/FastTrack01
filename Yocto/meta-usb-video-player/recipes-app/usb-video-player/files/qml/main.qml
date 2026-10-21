@@ -12,31 +12,10 @@ ApplicationWindow {
     title: qsTr("FastTrack Automotive Infotainment")
     color: "#0B0E14" // Deep Cockpit Dark
 
-    // State properties for interactive demo
-    property bool isPlaying: false
-    property int currentTrackIndex: 0
-    property int currentProgress: 35
-    property bool isMuted: false
-
-    // Lắng nghe tín hiệu CAN từ Tầng Platform (CanIpcClient)
-    Connections {
-        target: canClient
-        function onCommandPlay() {
-            rootWindow.isPlaying = true
-        }
-        function onCommandPause() {
-            rootWindow.isPlaying = false
-        }
-        function onCommandNext() {
-            rootWindow.currentTrackIndex = (rootWindow.currentTrackIndex + 1) % 5
-        }
-        function onCommandPrev() {
-            rootWindow.currentTrackIndex = (rootWindow.currentTrackIndex - 1 + 5) % 5
-        }
-        function onCommandSeek(seconds) {
-            rootWindow.currentProgress = Math.max(0, Math.min(100, rootWindow.currentProgress + seconds))
-        }
-    }
+    // All state comes from the actual USB model and media engine.
+    readonly property bool isPlaying: playerController.playing
+    readonly property int currentTrackIndex: playerController.currentIndex
+    readonly property real currentProgress: playerController.position
 
     // ==========================================
     // 1. HEADER BAR - COCKPIT HUD STYLE
@@ -111,10 +90,10 @@ ApplicationWindow {
             // USB Status Pill Badge
             Rectangle {
                 height: 30
-                Layout.preferredWidth: usbLayout.width + 20
+                Layout.preferredWidth: usbLayout.implicitWidth + 20
                 radius: 15
                 color: "#1A202C"
-                border.color: "#FF4D4F"
+                border.color: usbReader.mounted ? "#00F0FF" : "#FF4D4F"
                 border.width: 1
 
                 RowLayout {
@@ -126,12 +105,12 @@ ApplicationWindow {
                         width: 8
                         height: 8
                         radius: 4
-                        color: "#FF4D4F"
+                        color: usbReader.mounted ? "#00F0FF" : "#FF4D4F"
                     }
 
                     Text {
-                        text: "USB: DISCONNECTED"
-                        color: "#FFA39E"
+                        text: usbReader.mounted ? "USB: MOUNTED" : "USB: DISCONNECTED"
+                        color: usbReader.mounted ? "#00F0FF" : "#FFA39E"
                         font.pixelSize: 11
                         font.bold: true
                         font.letterSpacing: 0.5
@@ -142,7 +121,7 @@ ApplicationWindow {
             // CAN Bus Status Pill Badge
             Rectangle {
                 height: 30
-                Layout.preferredWidth: canLayout.width + 20
+                Layout.preferredWidth: canLayout.implicitWidth + 20
                 radius: 15
                 color: (typeof canClient !== "undefined" && canClient.connected) ? "#122A2F" : "#2A1810"
                 border.color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
@@ -168,7 +147,7 @@ ApplicationWindow {
                     }
 
                     Text {
-                        text: (typeof canClient !== "undefined" && canClient.connected) ? "CAN: can0 500k ACTIVE" : "CAN: WAITING DAEMON"
+                        text: (typeof canClient !== "undefined" && canClient.connected) ? "CAN: IPC LISTENING" : "CAN: IPC UNAVAILABLE"
                         color: (typeof canClient !== "undefined" && canClient.connected) ? "#00F0FF" : "#FF9900"
                         font.pixelSize: 11
                         font.bold: true
@@ -200,6 +179,13 @@ ApplicationWindow {
             border.color: "#1E2638"
             border.width: 1
             clip: true
+
+            Loader {
+                id: videoLoader
+                anchors.fill: parent
+                anchors.margins: 2
+                source: qtMajorVersion >= 6 ? "qrc:/ui/VideoSurfaceQt6.qml" : "qrc:/ui/VideoSurfaceQt5.qml"
+            }
 
             // Cockpit HUD Corner brackets
             Rectangle {
@@ -235,9 +221,11 @@ ApplicationWindow {
                 width: 2; height: 16; color: "#00F0FF"
             }
 
-            // Central Video Placeholder Graphics
+            // Empty/loading/error state; decoded video is rendered underneath.
             ColumnLayout {
                 anchors.centerIn: parent
+                width: parent.width - 40
+                visible: playerController.errorText.length > 0 || videoLoader.item === null || videoLoader.item.hasVideo === false
                 spacing: 12
 
                 Rectangle {
@@ -259,13 +247,13 @@ ApplicationWindow {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: rootWindow.isPlaying = !rootWindow.isPlaying
+                        onClicked: playerController.toggle()
                     }
                 }
 
                 Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: rootWindow.isPlaying ? "ĐANG PHÁT VIDEO..." : "VIDEO PLAYBACK SURFACE"
+                    text: playerController.errorText.length > 0 ? "PLAYBACK ERROR" : (usbPlaylist.count > 0 ? "PRESS PLAY" : "NO MEDIA")
                     color: rootWindow.isPlaying ? "#00F0FF" : "#A0AEC0"
                     font.bold: true
                     font.pixelSize: 15
@@ -274,7 +262,10 @@ ApplicationWindow {
 
                 Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "[ Chờ lệnh phát từ CANoe / Cắm USB để tải danh sách ]"
+                    text: playerController.errorText.length > 0 ? playerController.errorText : (usbPlaylist.count > 0 ? "Select a video or press Play" : (usbReader.mounted ? "Waiting for playlist / no supported media files" : "Insert a USB drive containing videos"))
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
                     color: "#55657E"
                     font.pixelSize: 12
                 }
@@ -286,7 +277,7 @@ ApplicationWindow {
                 anchors.left: parent.left
                 anchors.margins: 14
                 height: 28
-                width: currentTrackText.width + 20
+                width: currentTrackText.implicitWidth + 20
                 radius: 6
                 color: "#18203099"
                 border.color: "#2D3748"
@@ -301,7 +292,7 @@ ApplicationWindow {
                     }
                     Text {
                         id: currentTrackText
-                        text: playlistModel.get(rootWindow.currentTrackIndex).title
+                        text: playerController.currentTitle.length > 0 ? playerController.currentTitle : "No media selected"
                         color: "#E2E8F0"
                         font.pixelSize: 11
                     }
@@ -336,13 +327,13 @@ ApplicationWindow {
                     Item { Layout.fillWidth: true }
                     Rectangle {
                         height: 20
-                        width: countText.width + 12
+                        width: countText.implicitWidth + 12
                         radius: 10
                         color: "#1B2436"
                         Text {
                             id: countText
                             anchors.centerIn: parent
-                            text: "3 files"
+                            text: usbPlaylist.count + " files"
                             color: "#00F0FF"
                             font.pixelSize: 10
                         }
@@ -357,12 +348,7 @@ ApplicationWindow {
                     clip: true
                     spacing: 8
 
-                    model: ListModel {
-                        id: playlistModel
-                        ListElement { title: "demo_video_01.mp4"; duration: "03:45" }
-                        ListElement { title: "demo_video_02.mp4"; duration: "05:12" }
-                        ListElement { title: "automotive_h264.mkv"; duration: "02:30" }
-                    }
+                    model: usbPlaylist
 
                     delegate: Rectangle {
                         id: itemCard
@@ -411,14 +397,16 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                 }
                                 Text {
-                                    text: "H.264 / 1080p"
+                                    text: model.filePath
+                                    elide: Text.ElideMiddle
+                                    Layout.fillWidth: true
                                     color: "#64748B"
                                     font.pixelSize: 10
                                 }
                             }
 
                             Text {
-                                text: model.duration
+                                text: rootWindow.currentTrackIndex === index ? playerController.formatTime(playerController.duration) : "--:--"
                                 color: "#8E9EB5"
                                 font.pixelSize: 11
                             }
@@ -429,10 +417,7 @@ ApplicationWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                rootWindow.currentTrackIndex = index
-                                rootWindow.isPlaying = true
-                            }
+                            onClicked: playerController.selectTrack(index)
                         }
                     }
                 }
@@ -477,7 +462,7 @@ ApplicationWindow {
                 spacing: 12
 
                 Text {
-                    text: "01:15"
+                    text: playerController.formatTime(playerController.position)
                     color: "#00F0FF"
                     font.bold: true
                     font.pixelSize: 12
@@ -488,10 +473,11 @@ ApplicationWindow {
                     id: progressSlider
                     Layout.fillWidth: true
                     from: 0
-                    to: 100
+                    to: Math.max(1, playerController.duration)
+                    enabled: playerController.seekable
                     value: rootWindow.currentProgress
 
-                    onMoved: rootWindow.currentProgress = value
+                    onMoved: playerController.seekTo(value)
 
                     // Custom Track
                     background: Rectangle {
@@ -542,7 +528,7 @@ ApplicationWindow {
                 }
 
                 Text {
-                    text: playlistModel.get(rootWindow.currentTrackIndex).duration
+                    text: playerController.formatTime(playerController.duration)
                     color: "#8E9EB5"
                     font.bold: true
                     font.pixelSize: 12
@@ -579,12 +565,7 @@ ApplicationWindow {
                         verticalAlignment: Text.AlignVCenter
                     }
 
-                    onClicked: {
-                        if (rootWindow.currentTrackIndex > 0)
-                            rootWindow.currentTrackIndex--
-                        else
-                            rootWindow.currentTrackIndex = playlistModel.count - 1
-                    }
+                    onClicked: playerController.previous()
                 }
 
                 // 2. Fast Backward -10s
@@ -611,9 +592,7 @@ ApplicationWindow {
                         verticalAlignment: Text.AlignVCenter
                     }
 
-                    onClicked: {
-                        rootWindow.currentProgress = Math.max(0, rootWindow.currentProgress - 10)
-                    }
+                    onClicked: playerController.seekRelative(-10)
                 }
 
                 // 3. Central Glowing PLAY / PAUSE Button (Larger & Illuminated)
@@ -655,9 +634,7 @@ ApplicationWindow {
                         verticalAlignment: Text.AlignVCenter
                     }
 
-                    onClicked: {
-                        rootWindow.isPlaying = !rootWindow.isPlaying
-                    }
+                    onClicked: playerController.toggle()
                 }
 
                 // 4. Fast Forward +10s
@@ -684,9 +661,7 @@ ApplicationWindow {
                         verticalAlignment: Text.AlignVCenter
                     }
 
-                    onClicked: {
-                        rootWindow.currentProgress = Math.min(100, rootWindow.currentProgress + 10)
-                    }
+                    onClicked: playerController.seekRelative(10)
                 }
 
                 // 5. Next Track Button
@@ -713,12 +688,7 @@ ApplicationWindow {
                         verticalAlignment: Text.AlignVCenter
                     }
 
-                    onClicked: {
-                        if (rootWindow.currentTrackIndex < playlistModel.count - 1)
-                            rootWindow.currentTrackIndex++
-                        else
-                            rootWindow.currentTrackIndex = 0
-                    }
+                    onClicked: playerController.next()
                 }
             }
         }

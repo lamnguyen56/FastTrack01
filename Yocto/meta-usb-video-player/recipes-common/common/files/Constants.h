@@ -79,6 +79,7 @@ constexpr const char* DEFAULT_CAN_INTERFACE    = "can0";
 constexpr int         CAN_BITRATE              = 500000;
 constexpr int         CAN_RESTART_MS           = 100;
 constexpr const char* DEFAULT_USB_MOUNT_POINT  = "/media/usb0";
+constexpr const char* DEFAULT_USB_PLAYLIST_PATH = "/tmp/usb_playlist.txt"; ///< Atomic UTF-8 path snapshot.
 constexpr int         CAN_STATUS_INTERVAL_MS   = 100;  ///< 100ms cyclic telemetry
 // ============================================================================
 // Binary IPC Packet Structs (truyền qua Unix Domain Socket, zero overhead)

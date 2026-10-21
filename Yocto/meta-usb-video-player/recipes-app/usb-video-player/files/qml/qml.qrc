@@ -1,5 +1,7 @@
 <RCC>
-    <qresource prefix="/">
+    <qresource prefix="/ui">
         <file>main.qml</file>
+        <file>VideoSurfaceQt5.qml</file>
+        <file>VideoSurfaceQt6.qml</file>
     </qresource>
 </RCC>

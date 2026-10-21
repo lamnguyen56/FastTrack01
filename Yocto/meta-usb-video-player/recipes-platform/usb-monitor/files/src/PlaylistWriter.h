@@ -12,8 +12,8 @@
 namespace usb {
 
 /**
- * @brief Publish playlist-file IPC while preserving the file inode.
- * @note Writes are not atomic snapshots; transport migration is outside this module.
+ * @brief Publish a complete playlist-file IPC snapshot using atomic rename.
+ * @note Readers must rearm file watches after replacement; the Qt client also polls.
  */
 class PlaylistWriter {
 
@@ -24,7 +24,7 @@ public:
      */
     explicit PlaylistWriter(std::string path) : path_(std::move(path)) {}
     /**
-     * @brief Truncate and write newline-separated media paths.
+     * @brief Write newline-separated media paths to a temporary file and publish atomically.
      * @param files Ordered media paths to publish.
      * @return True when the stream reports a successful write and flush.
      */
@@ -32,7 +32,7 @@ public:
 
     /**
      * @brief Publish an empty playlist.
-     * @return True on successful truncation and flush.
+     * @return True on successful publication of an empty snapshot.
      */
     bool clear() const {
         return write({});

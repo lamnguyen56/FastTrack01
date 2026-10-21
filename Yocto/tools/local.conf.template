@@ -67,6 +67,10 @@ QT_GIT:pn-qtquickcontrols2 = "git://github.com/qt"
 # 5. Image and boot configuration
 # -----------------------------------------------------------------------------
 
+# H.264/AAC software decoders used by Qt Multimedia through GStreamer libav.
+# Accept only the recipe-specific commercial flags required by these codecs.
+LICENSE_FLAGS_ACCEPTED:append = " commercial_gstreamer1.0-libav commercial_ffmpeg"
+
 # Use the Raspberry Pi WIC partition layout supplied by meta-raspberrypi.
 WKS_FILE = "sdimage-raspberrypi.wks"
 
