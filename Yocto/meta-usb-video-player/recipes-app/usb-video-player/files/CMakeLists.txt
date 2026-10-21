@@ -17,8 +17,8 @@ if(NOT TARGET Common::Headers)
 endif()
 
 # Qt5 is used on the Yocto target; Qt6 remains available for desktop development.
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Gui Qml Quick Multimedia REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Qml Quick Multimedia REQUIRED)
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Gui Qml Quick REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Qml Quick REQUIRED)
 
 include(src/PlayerCore.cmake)
 
@@ -40,11 +40,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Qml
     Qt${QT_VERSION_MAJOR}::Quick
-    Qt${QT_VERSION_MAJOR}::Multimedia
 )
+if(QT_VERSION_MAJOR EQUAL 6)
+    find_package(Qt6 COMPONENTS Multimedia REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Multimedia)
+endif()
 if(QT_VERSION_MAJOR EQUAL 5)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GSTREAMER REQUIRED IMPORTED_TARGET gstreamer-1.0)
+    target_sources(${PROJECT_NAME} PRIVATE src/Player/GstPlayerBackend.cpp src/Player/GstPlayerBackend.h
+        src/Player/GstVideoMonitor.cpp src/Player/GstVideoMonitor.h)
     target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GSTREAMER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE USB_REQUIRE_HARDWARE_H264=1)
 endif()

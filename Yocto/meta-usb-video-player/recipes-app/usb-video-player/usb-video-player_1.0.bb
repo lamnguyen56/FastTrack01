@@ -15,7 +15,7 @@ S = "${WORKDIR}"
 
 inherit cmake_qt5 systemd pkgconfig
 
-DEPENDS = "common qtdeclarative qtmultimedia gstreamer1.0"
+DEPENDS = "common qtdeclarative gstreamer1.0"
 
 RDEPENDS:${PN} += " \
     qtbase-plugins \
@@ -23,8 +23,6 @@ RDEPENDS:${PN} += " \
     ttf-dejavu-sans-mono \
     qtdeclarative-qmlplugins \
     qtquickcontrols2-qmlplugins \
-    qtmultimedia-plugins \
-    qtmultimedia-qmlplugins \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
     gstreamer1.0-libav \
@@ -34,7 +32,7 @@ RDEPENDS:${PN} += " \
 "
 
 # Pi 3 uses the stateful V4L2 codec driver; module dependencies are automatic.
-RDEPENDS:${PN}:append:raspberrypi3-64 = " kernel-module-bcm2835-codec gstreamer1.0-plugins-good-video4linux2"
+RDEPENDS:${PN}:append:raspberrypi3-64 = " kernel-module-bcm2835-codec gstreamer1.0-plugins-good-video4linux2 gstreamer1.0-plugins-good-qmlgl gstreamer1.0-plugins-base-opengl"
 
 SYSTEMD_SERVICE:${PN} = "usb-video-player.service"
 SYSTEMD_AUTO_ENABLE = "enable"

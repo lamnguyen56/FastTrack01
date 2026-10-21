@@ -42,3 +42,8 @@ target_link_libraries(usb-player-session-test PRIVATE Qt${QT_VERSION_MAJOR}::Cor
 target_compile_options(usb-player-session-test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME usb-player-session-handoff COMMAND usb-player-session-test)
 set_tests_properties(usb-player-session-handoff PROPERTIES TIMEOUT 20)
+# Headless first-frame accounting used by the GStreamer video monitor.
+add_executable(usb-player-frame-progress-test frame_progress_test.cpp)
+target_include_directories(usb-player-frame-progress-test PRIVATE ../files/src)
+target_compile_options(usb-player-frame-progress-test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME usb-player-frame-progress COMMAND usb-player-frame-progress-test)

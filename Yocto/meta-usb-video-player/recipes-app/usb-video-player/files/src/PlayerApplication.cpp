@@ -24,6 +24,12 @@ PlayerApplication::PlayerApplication()
 int PlayerApplication::run() {
     // The first snapshot is loaded before QML; selected media does not autoplay.
     HardwareDecodePolicy::apply();
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    if (media_.initialize() == false) {
+        return 1;
+    }
+    engine_.rootContext()->setContextProperty("gstPlayer", &media_);
+#endif
     usb_.start();
     engine_.load(QUrl(QStringLiteral("qrc:/ui/main.qml")));
     if (engine_.rootObjects().isEmpty() == true) {
@@ -31,5 +37,9 @@ int PlayerApplication::run() {
         return 1;
     }
     LOG_I("USB video player UI started");
-    return QGuiApplication::exec();
+    const int result = QGuiApplication::exec();
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    media_.detach();
+#endif
+    return result;
 }

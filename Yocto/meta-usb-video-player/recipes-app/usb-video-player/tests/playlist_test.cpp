@@ -55,9 +55,16 @@ int main(int argc, char** argv) {
         int autoPlays = 0;
         int autoStops = 0;
         qint64 replaySeek = -1;
-        QObject::connect(&controller, &PlayerController::playRequested, [&]() { ++autoPlays; });
+        QStringList replayOrder;
+        QObject::connect(&controller, &PlayerController::playRequested, [&]() {
+            ++autoPlays;
+            replayOrder.append("play");
+        });
         QObject::connect(&controller, &PlayerController::stopRequested, [&]() { ++autoStops; });
-        QObject::connect(&controller, &PlayerController::seekRequested, [&](qint64 value) { replaySeek = value; });
+        QObject::connect(&controller, &PlayerController::seekRequested, [&](qint64 value) {
+            replaySeek = value;
+            replayOrder.append(QStringLiteral("seek:%1").arg(value));
+        });
         assert(controller.autoAdvance() == true);
         controller.setAutoAdvance(false);
         controller.reportPlayback(true, true);
@@ -76,6 +83,8 @@ int main(int argc, char** argv) {
         assert(autoPlays == 0); // Enabling after completion does not unexpectedly play.
         controller.play();
         assert(replaySeek == 0 && autoPlays == 1);
+        // The direct backend reopens EOS media on seek:0 before consuming Play.
+        assert((replayOrder == QStringList{"seek:0", "play"}));
         assert(controller.isFinished() == false);
         controller.handleEndOfMedia();
         assert(controller.currentIndex() == 1 && autoPlays == 2);

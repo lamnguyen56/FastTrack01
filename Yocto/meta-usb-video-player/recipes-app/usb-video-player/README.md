@@ -9,7 +9,7 @@ USB storage -> usb-monitor -> /tmp/usb_playlist.txt
                                    |
 CAN IPC -> CanIpcClient -> PlayerController <- UI buttons
                                    |
-                         Qt Multimedia / VideoOutput
+                         GstPlayerBackend / playbin -> glupload -> glcolorconvert -> qmlglsink
 ```
 
 ## Modules
@@ -20,7 +20,8 @@ CAN IPC -> CanIpcClient -> PlayerController <- UI buttons
 | `UsbPlaylistModel` | Expose ordered filename/path roles and count through QAbstractListModel |
 | `PlayerController` | Selection, bounded seek requests, transport commands, actual timeline/state and errors |
 | `PlayerApplication` | Wire USB, CAN and the QML view; keep main.cpp small |
-| `VideoSurfaceQt5.qml` | Qt5 MediaPlayer and VideoOutput used on the Pi |
+| `GstPlayerBackend` | Direct GStreamer transport, bus errors/EOS, buffered playback and timeline polling |
+| `VideoSurfaceQt5.qml` | GstGLVideoItem composited by Qt Quick on the Pi |
 | `VideoSurfaceQt6.qml` | Separate Qt6 desktop adapter with audio/video output APIs |
 
 The IPC file has one absolute UTF-8 path per LF-terminated line. The common header
@@ -55,7 +56,7 @@ Run from an initialized Yocto shell. For example, from Yocto/tools:
 ./deploy-process.sh --logs app 192.168.1.30
 ```
 
-Deploy both processes for the atomic publisher/reader pair. Qt5/QML/Multimedia,
+Deploy both processes for the atomic publisher/reader pair. Qt5/QML and the GStreamer GL plugins,
 fonts and an appropriate decoder must already be installed on the Pi. The existing
 app recipe supplies Qt runtime packages. Binary deployment does not install new
 runtime dependencies or service changes. Alternatively build and flash usb-image.
@@ -254,7 +255,7 @@ the choice is not persisted to disk.
 - Enabled: completion selects and plays the next file, wrapping at the end. A
   one-file playlist replays that file.
 - Disabled: completion retains the selection/source and does not request playback
-  or stop/clear the output. Qt5 VideoOutput.LastFrame preserves the final frame.
+  or stop/clear the output. The Qt5 GStreamer pipeline retains its final sink frame.
 - Play after held completion replays from the start. Manual Next/Previous always
   selects and plays regardless of AUTO NEXT. Enabling the switch after completion
   does not start playback until the user explicitly plays or selects a file.
@@ -268,31 +269,15 @@ The core tests exercise policy and signal behavior, not video rendering.
 
 ### Asynchronous media handoff
 
-PlaybackCoordinator.qml serializes Play and end-of-media handling for both Qt
-adapters. Completion is deferred until the old backend callback has returned.
-Play remains pending during LoadingMedia and is attempted outside status callbacks
-only when the requested source matches both the controller and backend and the
-backend reports a playable status. The request is consumed when PlayingState is
-reported. Pause, Stop, errors and source replacement invalidate queued requests.
-No fixed loading delay or busy retry timer is used.
+On Pi, GstPlayerBackend initializes the GL sink using a cancellable render job,
+then applies the latest Play/Pause intent. Bus EOS messages call the shared
+controller; no fixed loading delay is used. The Qt6 desktop adapter continues to
+use PlaybackCoordinator.qml. Its native mock tests cover transport scheduling;
+they do not validate the new GStreamer backend or hardware rendering.
 
-The AUTO NEXT card is anchored to the bottom-right of the control bar independently
-of the centered transport buttons. It shows PLAY NEXT VIDEO or STOP AT END and a
-font-independent toggle indicator.
-
-The headless async transport test instantiates the actual QML coordinator with
-mock backend objects. It covers delayed media readiness, deferred EOS, automatic
-next playback intent, stale sources, cancellation and repeated requests. It does
-not replace Pi checks with the real GStreamer backend: verify automatic next and
-last-to-first wrap, a one-file playlist, Pause during loading, rapid manual Next,
-and AUTO NEXT disabled retaining the last frame.
-
-Qt5 adapter readiness must use MediaPlayer.Loaded, Buffered and Buffering. The
-Qt6 adapter uses LoadedMedia, BufferedMedia and BufferingMedia. These enum names
-are backend API differences, not interchangeable spellings. The mock coordinator
-test exercises scheduling/cancellation, not Qt Multimedia enum resolution; verify
-adapter constants against the pinned Qt API and test playback on the Pi.
-
+The AUTO NEXT card remains anchored to the bottom-right of the control bar.
+Verify auto-next, one-file repeat, pause during preroll, rapid Next and held EOS
+on the Pi with the real backend.
 ### Layout stability
 
 Fixed-size AUTO NEXT content and playlist delegates use anchors/positioners rather
@@ -381,35 +366,6 @@ The overlay-state test covers absent USB, empty/ready playlist, loading, started
 playback, pause/held-frame semantics, next selection, errors and unplug priority.
 It validates the QML state model; real video/frame timing requires a Pi test.
 
-## Qt5 hardware-decoder session handoff
-
-The production Qt5 adapter now recreates its MediaPlayer and VideoOutput per
-selection, including same-file AUTO NEXT. MediaSessionLifecycle first requests
-Stop and clears the old source, deactivates the session Loader, then creates only
-the latest requested session on a later event-loop turn. Rapid Next or unplug
-invalidates queued replacements. The persistent PlaybackCoordinator keeps Play
-intent while there is no backend and starts only the matching ready session.
-
-The new player starts with an empty source. Its source is assigned only after the
-session component completes, so VideoOutput is attached before media loading and
-preroll. Callbacks during teardown cannot overwrite the new controller state.
-AUTO NEXT disabled does not replace the session at EOS, preserving LastFrame;
-Pause/Resume and manual seeking stay within the active session. The optional Qt6
-desktop adapter retains its existing lifecycle; this change targets Qt5 on Pi.
-
-This addresses reuse/initialization risks identified in code for intermittent
-black video after a hardware-decoded track change. It is not proof of the device's
-root cause. No seek-forward workaround, software-decoder downgrade or fixed sleep
-was added. [MediaSession] logs record session creation, PlayingState and output
-format geometry; geometry and PlayingState do not themselves prove a displayed
-frame. Test repeated auto/manual transitions between different resolutions,
-one-file repeat, held EOS, pause/resume, seek and unplug on the Pi. If black video
-persists, collect these logs with GStreamer v4l2/decodebin diagnostics.
-
-The session-handoff test executes the actual lifecycle QML for teardown boundaries,
-rapid replacements, same-file replay and unplug; transport tests cover Play intent
-across a missing backend. These headless tests cannot exercise V4L2 or rendering.
-
 ## Hardware-only video policy
 
 HardwareDecodePolicy applies before the Qt5 engine loads media. It lowers all
@@ -419,14 +375,11 @@ registration. Audio decoder, parser and demuxer ranks are unchanged. This is loc
 to the app process; gst-inspect run from a shell can still list software decoders.
 It prevents automatic software video fallback rather than deleting plugin files.
 
-When the hardware decoder rejects a stream, the Qt5 adapter stops the complete
-media session, cancels pending Play/EOS and marks the selection blocked. The UI
-shows Unsupported resolution or video format, optional reported dimensions and a
-suggestion to use H.264 720p. Resource/I/O errors retain their backend message;
-they are not presented as resolution errors. The user can select another file;
-unsupported files are not silently skipped and Play remains disabled until a new
-selection resets the failure. No new ffprobe/discoverer executable is required.
-
+When the hardware decoder rejects a stream, the backend stops the session and
+publishes the GStreamer error. Missing video decoder messages are also fatal,
+even when playbin could otherwise continue with audio only. Unsupported media is
+not automatically skipped. Resource/I/O errors retain their backend messages.
+Select a supported file to recover. No ffprobe executable is required on target.
 This policy is compiled into the binary; deploy-process.sh app updates it even if
 the installed service still has the previous rank preference. A later image also
 installs the updated service setting. Confirm the startup Video decode policy log,
@@ -434,3 +387,123 @@ installs the updated service setting. Confirm the startup Video decode policy lo
 rejection, no audio-only playback after video rejection, recovery on selecting a
 supported file and preservation of the AUTO NEXT/USB removal behavior on the Pi.
 Headless tests check failure messages and UI state, not hardware/GStreamer runtime.
+
+## Experimental direct GStreamer backend (Qt5 / Pi)
+
+The Pi adapter no longer uses Qt Multimedia. `GstPlayerBackend` owns `playbin`
+with a custom video sink bin: `glupload ! glcolorconvert ! qmlglsink`.
+Audio stays in playbin, sharing its clock with video. HardwareDecodePolicy still
+allows only v4l2h264dec for video; unsupported video does not fall back to CPU.
+Qt6 desktop development retains its existing Qt Multimedia adapter.
+
+The sink plugin is loaded before QML to register GstGLVideoItem. Each URI
+initializes qmlglsink to READY on the Qt render thread before starting playbin,
+so GL elements receive Qt's display/context. A cancellation gate protects fast
+track changes from late initialization. Bus messages are polled on the Qt thread;
+EOS goes through PlayerController for auto-next, while errors stop the session.
+USB removal releases the pipeline and hides the old video item. At EOS with
+auto-next off, the pipeline is retained to hold the last frame until replay or
+selection. Position updates are limited to ten per second.
+
+This path enables GL texture sharing; it does not guarantee DMA-BUF/zero-copy.
+That must be verified from negotiated caps and measurements on the Pi.
+
+### Build and first deployment
+
+```sh
+bitbake usb-video-player
+```
+
+The new runtime packages are `gstreamer1.0-plugins-good-qmlgl` and
+`gstreamer1.0-plugins-base-opengl`. For the first test, install these packages
+and their dependencies with the new app, or build/flash `usb-image`. Deploying
+only the executable with deploy-process.sh is insufficient if qmlglsink is absent.
+If the Pi already has glupload/glcolorconvert and compatible Qt/GStreamer
+libraries, a development-only alternative is to copy just the new plugin:
+
+```sh
+# Initialized Yocto build shell on the laptop:
+find "$BUILDDIR/tmp/work" -path '*/gstreamer1.0-plugins-good/*/image/usr/lib/gstreamer-1.0/libgstqmlgl.so'
+# Copy the resulting ARM64 file to root@PI_IP:/tmp/libgstqmlgl.so.
+```
+
+On Pi, run `ldd /tmp/libgstqmlgl.so` and check that no dependency says `not found`.
+Then stop the player, install it with
+`install -m 0755 /tmp/libgstqmlgl.so /usr/lib/gstreamer-1.0/libgstqmlgl.so`, and
+verify `gst-inspect-1.0 qmlglsink` before deploying the new executable.
+This assumes matching libraries; otherwise deploy the built packages/dependencies
+or use the image. Manual plugin copies are replaced on the next image flash.
+
+After the runtime plugins are installed, normal binary-only app updates work.
+Do not force GST_GL_WINDOW or GST_GL_DISPLAY: Qt provides the GL context.
+
+On the Pi:
+
+```sh
+gst-inspect-1.0 qmlglsink
+gst-inspect-1.0 glupload
+gst-inspect-1.0 glcolorconvert
+systemctl restart usb-video-player.service
+journalctl -u usb-video-player.service -n 50 --no-pager -o cat
+```
+
+Expect `Video backend: direct GStreamer playbin + qmlglsink` at startup.
+Verify the same 720p and 1080p files, pause/resume, seek, rapid track changes,
+auto-next on/off, replay after EOS, unsupported media, unplug and reconnect USB.
+Compare CPU and visible dropped frames with verbose GST_DEBUG disabled. Native
+controller/QML tests do not exercise EGL, the real sink, audio or hardware decode;
+those require the Pi and a connected display.
+### Replay and transition hardening
+
+Normal selection, same-file repeat and replay after held EOS now reset playbin to
+READY and set its URI again. The playbin/video sink bin are retained instead of
+being destroyed and reparented per track. This releases the old file and decoder
+stream, flushes stale bus messages and avoids flush-seeking an EOS-drained V4L2
+decoder immediately followed by Play. Paused/resumed playback stays in its session.
+The last frame is retained at EOS until the user presses Play or changes media.
+
+playbin can internally take its sink chain to NULL while resetting to READY, so
+qmlglsink is prepared on the Qt render thread before every new preroll. Pending
+render jobs are cancelled before reset; stale completions cannot start playback.
+Error logs include the originating GStreamer element to distinguish a filesrc
+I/O failure from a decoder failure. These changes address lifecycle risks; a
+reported native SIGSEGV still requires a backtrace if it recurs on the Pi.
+
+Retest held EOS -> Play several times, one-file auto-next, alternating 720p/1080p,
+rapid Next/Previous, pause during loading and USB removal. Native tests cover the
+controller replay signal order, not GPU/decoder execution or the native crash.
+### First-frame startup and diagnostics
+
+The direct backend now explicitly prerolls playbin in PAUSED and waits for a
+completed asynchronous state change (queried without blocking). Only then does
+it honor a pending Play request. Pause/Stop/selection during preroll still replace
+that intent. A file without a supported video stream is rejected rather than
+silently playing audio only.
+
+qmlglsink has a finite 50 ms late-frame budget instead of its 5 ms default;
+clock synchronization and QoS remain enabled. This allows small scheduling jitter
+without disabling frame dropping or audio/video sync. It is a targeted tuning
+change, not proof of the random black-screen root cause.
+
+GstVideoMonitor logs negotiated GL caps after preroll, the first rendered sink
+buffer and a rate-limited warning after three seconds without frame progress
+while PLAYING. The UI no longer equates PLAYING with video delivery; it keeps
+loading feedback until rendered counters advance for the current URI. Counters
+are scoped per URI so previous-track frames cannot clear the next loading state.
+A rendered sink buffer means it was handed to the Qt video item; it does not
+prove correct pixels were composited onto the physical display.
+
+On Pi, test first playback, rapid selection, auto-next, held EOS/replay and
+pause during loading. If black video recurs, capture the compact log rather than
+enabling verbose decodebin output:
+
+```sh
+journalctl -u usb-video-player.service -n 100 --no-pager -o cat
+```
+
+Look for `Video preroll complete`, `Video sink negotiated`,
+`Video sink rendered first buffer` and `Video sink has no frame progress`.
+If sink counters advance but the picture is black, investigate Qt/GL composition;
+if no buffers render and dropped rises, investigate decoder/timing upstream.
+The native frame-progress test covers retained counters, resets, first delivery
+and pause/EOS state retention. It cannot validate hardware rendering.
