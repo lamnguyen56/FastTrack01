@@ -104,6 +104,8 @@ int main(int argc, char** argv) {
     PlayerController player(model);
     bool mounted = false;
     UsbPlaylistReader reader(model, ipc, root, [&mounted]() { return mounted; });
+    int removals = 0;
+    QObject::connect(&reader, &UsbPlaylistReader::disconnected, [&removals]() { ++removals; });
     int plays = 0;
     int stops = 0;
     qint64 seek = -1;
@@ -111,6 +113,9 @@ int main(int argc, char** argv) {
     QObject::connect(&player, &PlayerController::stopRequested, [&stops]() { ++stops; });
     QObject::connect(&player, &PlayerController::seekRequested, [&seek](qint64 value) { seek = value; });
     reader.start();
+    assert(removals == 0); // No disconnected notice on a boot without USB.
+    reader.reload();
+    assert(removals == 0);
     assert(model.count() == 0); // Stale IPC is rejected while the mount is absent.
     assert(player.currentIndex() == -1);
 
@@ -173,6 +178,9 @@ int main(int argc, char** argv) {
     mounted = false;
     waitUntil([&model]() { return model.count() == 0; });
     assert(reader.isMounted() == false);
+    assert(removals == 1);
+    reader.reload();
+    assert(removals == 1); // Polling an absent mount does not repeat the notice.
     assert(player.currentIndex() == -1);
     assert(player.source().isEmpty() == true);
     assert(player.position() == 0);
@@ -184,6 +192,10 @@ int main(int argc, char** argv) {
     publish(ipc, QByteArray());
     waitUntil([&model]() { return model.count() == 0; });
     assert(reader.isMounted() == true); // Mounted USB with no media differs from unplugged.
+    assert(removals == 1); // Reconnect/empty publication is not a removal event.
+    mounted = false;
+    reader.reload();
+    assert(removals == 2); // A subsequent physical removal produces a fresh notice.
     player.next();
     player.previous();
     assert(player.currentIndex() == -1);

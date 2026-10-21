@@ -23,6 +23,8 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Qml Quick Multimedia REQU
 include(src/PlayerCore.cmake)
 
 add_executable(${PROJECT_NAME}
+    src/Player/HardwareDecodePolicy.cpp
+    src/Player/HardwareDecodePolicy.h
     src/main.cpp
     src/PlayerApplication.cpp
     src/PlayerApplication.h
@@ -40,4 +42,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Quick
     Qt${QT_VERSION_MAJOR}::Multimedia
 )
+if(QT_VERSION_MAJOR EQUAL 5)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GSTREAMER REQUIRED IMPORTED_TARGET gstreamer-1.0)
+    target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GSTREAMER)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE USB_REQUIRE_HARDWARE_H264=1)
+endif()
+
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)

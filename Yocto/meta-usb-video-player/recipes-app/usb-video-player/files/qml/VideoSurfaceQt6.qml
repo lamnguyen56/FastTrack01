@@ -3,7 +3,10 @@ import QtMultimedia 6.2
 
 // Desktop Qt6 uses videoOutput/audioOutput instead of Qt5's VideoOutput.source.
 Item {
+    id: surface
     readonly property bool hasVideo: media.hasVideo
+    property bool playbackStarted: false
+    readonly property bool loading: transport.pendingPlay || media.mediaStatus === MediaPlayer.LoadingMedia
 
     PlaybackCoordinator {
         id: transport
@@ -19,11 +22,15 @@ Item {
     MediaPlayer {
         id: media
         source: playerController.source
+        onSourceChanged: surface.playbackStarted = false
         videoOutput: output
         audioOutput: AudioOutput {}
         onPositionChanged: playerController.reportPosition(position)
         onDurationChanged: playerController.reportDuration(duration)
         onPlaybackStateChanged: {
+            if (playbackState === MediaPlayer.PlayingState) {
+                surface.playbackStarted = true
+            }
             transport.reportPlaying(playbackState === MediaPlayer.PlayingState)
             playerController.reportPlayback(playbackState === MediaPlayer.PlayingState, seekable)
         }

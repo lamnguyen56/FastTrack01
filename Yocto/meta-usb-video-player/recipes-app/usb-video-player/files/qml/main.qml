@@ -17,6 +17,27 @@ ApplicationWindow {
         viewportHeight: rootWindow.height
     }
 
+    // Feedback is informational; USB teardown and empty state never wait for user input.
+    UsbDisconnectNotice {
+        id: usbNotice
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: controlBar.top
+        anchors.bottomMargin: ui.u(12)
+        width: Math.min(rootWindow.width * 0.80, ui.u(640))
+        unitScale: ui.scale
+        z: 100
+    }
+
+    Connections {
+        target: usbReader
+        function onDisconnected() { usbNotice.show() }
+        function onMountedChanged() {
+            if (usbReader.mounted) {
+                usbNotice.dismiss()
+            }
+        }
+    }
+
     // All state comes from the actual USB model and media engine.
     readonly property bool isPlaying: playerController.playing
     readonly property int currentTrackIndex: playerController.currentIndex
@@ -247,12 +268,21 @@ ApplicationWindow {
                 width: ui.u(2); height: ui.u(16); color: "#00F0FF"
             }
 
+            PlayerOverlayState {
+                id: overlayState
+                mounted: usbReader.mounted
+                mediaCount: usbPlaylist.count
+                errorText: playerController.errorText
+                loading: videoLoader.item !== null && videoLoader.item.loading
+                playbackStarted: videoLoader.item !== null && videoLoader.item.playbackStarted
+            }
+
             // Empty/loading/error state; decoded video is rendered underneath.
             Column {
                 id: emptyState
                 anchors.centerIn: parent
                 width: Math.max(0, parent.width - ui.u(40))
-                visible: playerController.errorText.length > 0 || videoLoader.item === null || videoLoader.item.hasVideo === false
+                visible: overlayState.visible
                 spacing: ui.u(12)
 
                 Rectangle {
@@ -266,12 +296,22 @@ ApplicationWindow {
 
                     MediaIcon {
                         anchors.centerIn: parent
-                        name: rootWindow.isPlaying ? "play" : "pause"
+                        name: "play"
+                        visible: overlayState.busy === false
                         color: rootWindow.isPlaying ? "#00F0FF" : "#71829D"
                         iconSize: ui.u(28)
                     }
 
+                    BusyIndicator {
+                        anchors.centerIn: parent
+                        width: ui.u(48)
+                        height: ui.u(48)
+                        running: overlayState.busy
+                        visible: running
+                    }
+
                     MouseArea {
+                        enabled: overlayState.canPlay
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: playerController.toggle()
@@ -280,7 +320,7 @@ ApplicationWindow {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: playerController.errorText.length > 0 ? "PLAYBACK ERROR" : (usbPlaylist.count > 0 ? "PRESS PLAY" : "NO MEDIA")
+                    text: overlayState.title
                     color: rootWindow.isPlaying ? "#00F0FF" : "#A0AEC0"
                     font.bold: true
                     font.pixelSize: ui.u(15)
@@ -289,7 +329,7 @@ ApplicationWindow {
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: playerController.errorText.length > 0 ? playerController.errorText : (usbPlaylist.count > 0 ? "Select a video or press Play" : (usbReader.mounted ? "Waiting for playlist / no supported media files" : "Insert a USB drive containing videos"))
+                    text: overlayState.detail
                     width: emptyState.width
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
@@ -604,7 +644,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     from: 0
                     to: Math.max(1, playerController.duration)
-                    enabled: playerController.seekable
+                    enabled: usbReader.mounted && playerController.seekable
                     value: rootWindow.currentProgress
 
                     onMoved: playerController.seekTo(value)
@@ -668,6 +708,8 @@ ApplicationWindow {
 
             // --- ICON-ONLY AUTOMOTIVE CONTROL BUTTONS ---
             Row {
+                enabled: usbReader.mounted && usbPlaylist.count > 0
+                opacity: enabled ? 1 : 0.4
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: ui.portrait ? ui.u(52) : 0
@@ -733,6 +775,7 @@ ApplicationWindow {
                 // 3. Central Glowing PLAY / PAUSE Button (Larger & Illuminated)
                 Button {
                     id: playPauseBtn
+                    enabled: playerController.errorText.length === 0
                     padding: ui.u(6)
                     anchors.verticalCenter: parent.verticalCenter
                     Accessible.name: rootWindow.isPlaying ? qsTr("Pause") : qsTr("Play")

@@ -3,6 +3,7 @@
 #include <QQmlContext>
 #include "Constants.h"
 #include "Logger.h"
+#include "Player/HardwareDecodePolicy.h"
 
 PlayerApplication::PlayerApplication()
     : usb_(playlist_, QString::fromUtf8(FastTrack::DEFAULT_USB_PLAYLIST_PATH),
@@ -22,6 +23,7 @@ PlayerApplication::PlayerApplication()
 
 int PlayerApplication::run() {
     // The first snapshot is loaded before QML; selected media does not autoplay.
+    HardwareDecodePolicy::apply();
     usb_.start();
     engine_.load(QUrl(QStringLiteral("qrc:/ui/main.qml")));
     if (engine_.rootObjects().isEmpty() == true) {

@@ -167,8 +167,8 @@ gst-inspect-1.0 avdec_aac
 journalctl -u usb-video-player.service -f -o cat
 ```
 
-These are CPU decoders; smooth playback on Pi 3 depends on resolution, bitrate,
-and CPU load and must be measured on hardware. EGLFS renders the UI but does not
+These are CPU decoders; the production Qt5 policy now disables their video
+factories during app playback while retaining audio decoding. EGLFS renders the UI but does not
 by itself provide a video decoder. A successful image dry-run checks dependency
 resolution, not actual video playback.
 
@@ -182,9 +182,9 @@ userspace is required for this path.
 
 The GStreamer Good recipe explicitly enables v4l2 device probing, and the app
 requires its video4linux2 plugin package. The service sets
-GST_PLUGIN_FEATURE_RANK=v4l2h264dec:300 so decodebin prefers the hardware decoder.
-Libav remains installed for AAC and software fallback. Fallback during autoplug
-selection is not a guarantee of recovery after a decoder fails during playback.
+GST_PLUGIN_FEATURE_RANK=v4l2h264dec:300,avdec_h264:0. The Qt5 application also
+enforces v4l2h264dec as the only automatic video decoder in its GStreamer registry.
+Libav remains installed for AAC, but software video fallback is disabled.
 
 Rebuild with bitbake usb-image and flash the resulting image. Binary-only app
 deployment does not update kernel modules, plugin packages or the service unit.
@@ -339,3 +339,98 @@ HDMI display. Relative scaling remains enabled without a fixed pixel cap: at
 retain their earlier proportions. At other resolutions all chrome scales from
 that reference, while most available width is reserved for video. The playlist
 fraction is 300/1920 rather than the previous 30% sidebar.
+
+## USB removal interaction
+
+Removal is handled as source loss, not a confirmation-dependent operation:
+
+- The reader emits disconnected once on a mounted-to-absent transition. An absent
+  startup and repeated absent polls do not produce a notification.
+- The existing playlist invalidation immediately stops playback, clears the media
+  source and metadata, and releases open media handles. Qt5 clears video output;
+  AUTO NEXT does not keep a stale frame after source loss.
+- The view shows NO USB CONNECTED, an empty playlist and disabled transport/seek
+  controls. A nonmodal USB disconnected notice appears above the control bar.
+- The notice disappears after six seconds or Dismiss. Dismiss changes only the
+  notice; cleanup has already completed. Reconnection closes a stale notice.
+- Reconnection reloads a fresh playlist and waits for explicit user playback.
+  AUTO NEXT continues to apply to successful end-of-media, not device removal.
+
+This is the chosen project UX, inspired by nonblocking snackbar feedback; it is
+not a claim that every vehicle/device uses identical behavior. See Material 3
+https://m3.material.io/components/snackbar/overview . The earlier proposal to hold
+the current frame until OK is intentionally replaced by this interaction.
+
+Core tests cover startup, repeated polling, removal, reconnect and a second
+removal, plus existing source/playlist clearing. Target checks must cover unplug
+while playing/paused/at end, rapid reinsertion, no repeated notices, timeout and
+Dismiss, empty startup and transport being disabled without media. Actual popup
+rendering and GStreamer handle release require Pi testing.
+
+## Video overlay state
+
+PlayerOverlayState.qml separates empty/ready/loading/error feedback from video
+metadata. A pending Play or initial media load shows LOADING VIDEO with a busy
+indicator. After the backend reports PlayingState for that source, instructional
+text stays hidden through pause, buffering and held end-of-media. Changing source
+resets this state. Decoder errors and USB loss take precedence and remain visible.
+The view no longer decides whether to show PRESS PLAY solely from playlist count
+or hasVideo metadata, which can be unavailable during media negotiation.
+
+The overlay-state test covers absent USB, empty/ready playlist, loading, started
+playback, pause/held-frame semantics, next selection, errors and unplug priority.
+It validates the QML state model; real video/frame timing requires a Pi test.
+
+## Qt5 hardware-decoder session handoff
+
+The production Qt5 adapter now recreates its MediaPlayer and VideoOutput per
+selection, including same-file AUTO NEXT. MediaSessionLifecycle first requests
+Stop and clears the old source, deactivates the session Loader, then creates only
+the latest requested session on a later event-loop turn. Rapid Next or unplug
+invalidates queued replacements. The persistent PlaybackCoordinator keeps Play
+intent while there is no backend and starts only the matching ready session.
+
+The new player starts with an empty source. Its source is assigned only after the
+session component completes, so VideoOutput is attached before media loading and
+preroll. Callbacks during teardown cannot overwrite the new controller state.
+AUTO NEXT disabled does not replace the session at EOS, preserving LastFrame;
+Pause/Resume and manual seeking stay within the active session. The optional Qt6
+desktop adapter retains its existing lifecycle; this change targets Qt5 on Pi.
+
+This addresses reuse/initialization risks identified in code for intermittent
+black video after a hardware-decoded track change. It is not proof of the device's
+root cause. No seek-forward workaround, software-decoder downgrade or fixed sleep
+was added. [MediaSession] logs record session creation, PlayingState and output
+format geometry; geometry and PlayingState do not themselves prove a displayed
+frame. Test repeated auto/manual transitions between different resolutions,
+one-file repeat, held EOS, pause/resume, seek and unplug on the Pi. If black video
+persists, collect these logs with GStreamer v4l2/decodebin diagnostics.
+
+The session-handoff test executes the actual lifecycle QML for teardown boundaries,
+rapid replacements, same-file replay and unplug; transport tests cover Play intent
+across a missing backend. These headless tests cannot exercise V4L2 or rendering.
+
+## Hardware-only video policy
+
+HardwareDecodePolicy applies before the Qt5 engine loads media. It lowers all
+video/image decoder factories except v4l2h264dec to rank NONE and sets that factory
+to rank 300. It applies to both existing registry features and late plugin feature
+registration. Audio decoder, parser and demuxer ranks are unchanged. This is local
+to the app process; gst-inspect run from a shell can still list software decoders.
+It prevents automatic software video fallback rather than deleting plugin files.
+
+When the hardware decoder rejects a stream, the Qt5 adapter stops the complete
+media session, cancels pending Play/EOS and marks the selection blocked. The UI
+shows Unsupported resolution or video format, optional reported dimensions and a
+suggestion to use H.264 720p. Resource/I/O errors retain their backend message;
+they are not presented as resolution errors. The user can select another file;
+unsupported files are not silently skipped and Play remains disabled until a new
+selection resets the failure. No new ffprobe/discoverer executable is required.
+
+This policy is compiled into the binary; deploy-process.sh app updates it even if
+the installed service still has the previous rank preference. A later image also
+installs the updated service setting. Confirm the startup Video decode policy log,
+720p using v4l2h264dec, 1440p rejection without avdec_h264 entering PLAYING, AV1
+rejection, no audio-only playback after video rejection, recovery on selecting a
+supported file and preservation of the AUTO NEXT/USB removal behavior on the Pi.
+Headless tests check failure messages and UI state, not hardware/GStreamer runtime.

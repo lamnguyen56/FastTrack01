@@ -53,9 +53,13 @@ void UsbPlaylistReader::reload() {
     armWatcher();
     const bool mounted = mountProbe_();
     if (mounted_ != mounted) {
+        const bool removed = mounted_ == true && mounted == false;
         mounted_ = mounted;
         loaded_ = false;
         emit mountedChanged();
+        if (removed == true) {
+            emit disconnected();
+        }
         LOG_I("USB UI mount state: ", mounted_ ? "mounted" : "disconnected");
     }
 

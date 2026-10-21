@@ -1,6 +1,10 @@
 <RCC>
     <qresource prefix="/ui">
         <file>main.qml</file>
+        <file>MediaSupportPolicy.qml</file>
+        <file>MediaSessionLifecycle.qml</file>
+        <file>PlayerOverlayState.qml</file>
+        <file>UsbDisconnectNotice.qml</file>
         <file>UiMetrics.qml</file>
         <file>MediaIcon.qml</file>
         <file>PlaybackCoordinator.qml</file>

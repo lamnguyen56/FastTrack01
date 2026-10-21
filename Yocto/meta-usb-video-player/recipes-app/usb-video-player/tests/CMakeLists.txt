@@ -28,3 +28,17 @@ target_link_libraries(usb-player-metrics-test PRIVATE Qt${QT_VERSION_MAJOR}::Cor
 target_compile_options(usb-player-metrics-test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME usb-player-responsive-metrics COMMAND usb-player-metrics-test)
 set_tests_properties(usb-player-responsive-metrics PROPERTIES TIMEOUT 20)
+
+add_executable(usb-player-overlay-test overlay_test.cpp ../files/qml/qml.qrc)
+set_target_properties(usb-player-overlay-test PROPERTIES AUTORCC ON)
+target_link_libraries(usb-player-overlay-test PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Qml)
+target_compile_options(usb-player-overlay-test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME usb-player-overlay-state COMMAND usb-player-overlay-test)
+set_tests_properties(usb-player-overlay-state PROPERTIES TIMEOUT 20)
+
+add_executable(usb-player-session-test session_test.cpp ../files/qml/qml.qrc)
+set_target_properties(usb-player-session-test PROPERTIES AUTORCC ON)
+target_link_libraries(usb-player-session-test PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Qml)
+target_compile_options(usb-player-session-test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME usb-player-session-handoff COMMAND usb-player-session-test)
+set_tests_properties(usb-player-session-handoff PROPERTIES TIMEOUT 20)

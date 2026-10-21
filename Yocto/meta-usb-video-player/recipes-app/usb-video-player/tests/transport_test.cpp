@@ -83,6 +83,17 @@ int main(int argc, char** argv) {
     assert(QMetaObject::invokeMethod(gate, "cancel"));
     drain();
     assert(controller.completions == 1); // Manual Stop invalidates pending EOS work.
+    // Keep the new Play intent while the previous media object is destroyed.
+    gate->setProperty("backend", QVariant::fromValue(static_cast<QObject*>(nullptr)));
+    gate->setProperty("ready", false);
+    assert(QMetaObject::invokeMethod(gate, "requestPlay"));
+    drain();
+    assert(backend.plays == 3);
+    assert(gate->property("pendingPlay").toBool() == true);
+    gate->setProperty("backend", QVariant::fromValue(static_cast<QObject*>(&backend)));
+    gate->setProperty("ready", true);
+    drain();
+    assert(backend.plays == 4);
     delete gate;
     return 0;
 }

@@ -25,6 +25,7 @@ QtObject {
         var ticket = generation
         Qt.callLater(function() {
             if (ticket === generation && pendingPlay && ready
+                    && backend !== null && backend !== undefined
                     && backend.source.toString() === requestedSource
                     && controller.source.toString() === requestedSource) {
                 backend.play()
@@ -52,7 +53,7 @@ QtObject {
     }
 
     onAtEndChanged: {
-        if (atEnd) {
+        if (atEnd && backend !== null && backend !== undefined) {
             var completedSource = backend.source.toString()
             var ticket = generation
             // Let the old backend finish its EOS transition before loading another file.

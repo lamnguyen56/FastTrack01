@@ -13,9 +13,9 @@ SRC_URI = " \
 "
 S = "${WORKDIR}"
 
-inherit cmake_qt5 systemd
+inherit cmake_qt5 systemd pkgconfig
 
-DEPENDS = "common qtdeclarative qtmultimedia"
+DEPENDS = "common qtdeclarative qtmultimedia gstreamer1.0"
 
 RDEPENDS:${PN} += " \
     qtbase-plugins \

@@ -30,6 +30,8 @@ public:
 signals:
     /** @brief Notify the UI when the selected mount appears or disappears. */
     void mountedChanged();
+    /** @brief Emit once on a mounted-to-disconnected transition, never at absent startup. */
+    void disconnected();
 
 private:
     /** @brief Reattach the file watch after atomic replacement or late file creation. */
