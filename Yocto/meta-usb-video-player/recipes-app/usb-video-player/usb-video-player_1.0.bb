@@ -28,9 +28,13 @@ RDEPENDS:${PN} += " \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
     gstreamer1.0-libav \
+    gstreamer1.0-plugins-bad-videoparsersbad \
     can-daemon \
     usb-monitor \
 "
+
+# Pi 3 uses the stateful V4L2 codec driver; module dependencies are automatic.
+RDEPENDS:${PN}:append:raspberrypi3-64 = " kernel-module-bcm2835-codec gstreamer1.0-plugins-good-video4linux2"
 
 SYSTEMD_SERVICE:${PN} = "usb-video-player.service"
 SYSTEMD_AUTO_ENABLE = "enable"
