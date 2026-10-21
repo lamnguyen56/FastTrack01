@@ -231,3 +231,13 @@ gst-inspect-1.0 --no-colors v4l2h264dec
 Restart the player and confirm the active decoder in a fresh decodebin log with a
 known supported 720p H.264 file. Parser presence alone does not prove hardware
 playback succeeds.
+
+## Font-independent UI icons
+
+MediaIcon.qml draws playback controls, playlist markers and the header car symbol
+with Qt Quick Canvas geometry. These controls do not require Unicode media glyphs,
+emoji fonts, SVG plugins or an icon font package. Labels and filenames still use
+the installed text fonts. Icon changes are included in qml.qrc and embedded in the
+player executable, so deploy-process.sh app can update them without a new image.
+Check previous/next, seek buttons, Play/Pause state changes and playlist selection
+on the target after deployment.

@@ -60,10 +60,11 @@ ApplicationWindow {
                     border.color: "#00F0FF"
                     border.width: 1
 
-                    Text {
+                    MediaIcon {
                         anchors.centerIn: parent
-                        text: "🏎"
-                        font.pixelSize: 16
+                        name: "car"
+                        color: "#00F0FF"
+                        iconSize: 22
                     }
                 }
 
@@ -237,11 +238,11 @@ ApplicationWindow {
                     border.color: rootWindow.isPlaying ? "#00F0FF" : "#324158"
                     border.width: 2
 
-                    Text {
+                    MediaIcon {
                         anchors.centerIn: parent
-                        text: rootWindow.isPlaying ? "▶" : "⏸"
+                        name: rootWindow.isPlaying ? "play" : "pause"
                         color: rootWindow.isPlaying ? "#00F0FF" : "#71829D"
-                        font.pixelSize: 28
+                        iconSize: 28
                     }
 
                     MouseArea {
@@ -379,10 +380,10 @@ ApplicationWindow {
                             anchors.rightMargin: 12
                             spacing: 10
 
-                            Text {
-                                text: rootWindow.currentTrackIndex === index ? "▶" : "📁"
+                            MediaIcon {
+                                name: rootWindow.currentTrackIndex === index ? "play" : "folder"
                                 color: rootWindow.currentTrackIndex === index ? "#00F0FF" : "#718096"
-                                font.pixelSize: 12
+                                iconSize: 16
                             }
 
                             ColumnLayout {
@@ -544,6 +545,7 @@ ApplicationWindow {
                 // 1. Previous Track Button
                 Button {
                     id: prevBtn
+                    Accessible.name: qsTr("Previous track")
                     implicitWidth: 46
                     implicitHeight: 46
                     hoverEnabled: true
@@ -557,12 +559,10 @@ ApplicationWindow {
                         Behavior on border.color { ColorAnimation { duration: 120 } }
                     }
 
-                    contentItem: Text {
-                        text: "⏮"
+                    contentItem: MediaIcon {
+                        name: "previous"
                         color: prevBtn.hovered ? "#00F0FF" : "#CBD5E1"
-                        font.pixelSize: 18
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                        iconSize: 22
                     }
 
                     onClicked: playerController.previous()
@@ -571,6 +571,7 @@ ApplicationWindow {
                 // 2. Fast Backward -10s
                 Button {
                     id: rewBtn
+                    Accessible.name: qsTr("Rewind 10 seconds")
                     implicitWidth: 46
                     implicitHeight: 46
                     hoverEnabled: true
@@ -584,12 +585,10 @@ ApplicationWindow {
                         Behavior on border.color { ColorAnimation { duration: 120 } }
                     }
 
-                    contentItem: Text {
-                        text: "⏪"
+                    contentItem: MediaIcon {
+                        name: "rewind"
                         color: rewBtn.hovered ? "#00F0FF" : "#CBD5E1"
-                        font.pixelSize: 18
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                        iconSize: 22
                     }
 
                     onClicked: playerController.seekRelative(-10)
@@ -598,6 +597,7 @@ ApplicationWindow {
                 // 3. Central Glowing PLAY / PAUSE Button (Larger & Illuminated)
                 Button {
                     id: playPauseBtn
+                    Accessible.name: rootWindow.isPlaying ? qsTr("Pause") : qsTr("Play")
                     implicitWidth: 58
                     implicitHeight: 58
                     hoverEnabled: true
@@ -626,12 +626,10 @@ ApplicationWindow {
                         }
                     }
 
-                    contentItem: Text {
-                        text: rootWindow.isPlaying ? "⏸" : "▶"
+                    contentItem: MediaIcon {
+                        name: rootWindow.isPlaying ? "pause" : "play"
                         color: "#FFFFFF"
-                        font.pixelSize: rootWindow.isPlaying ? 24 : 22
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                        iconSize: 28
                     }
 
                     onClicked: playerController.toggle()
@@ -640,6 +638,7 @@ ApplicationWindow {
                 // 4. Fast Forward +10s
                 Button {
                     id: fwdBtn
+                    Accessible.name: qsTr("Forward 10 seconds")
                     implicitWidth: 46
                     implicitHeight: 46
                     hoverEnabled: true
@@ -653,12 +652,10 @@ ApplicationWindow {
                         Behavior on border.color { ColorAnimation { duration: 120 } }
                     }
 
-                    contentItem: Text {
-                        text: "⏩"
+                    contentItem: MediaIcon {
+                        name: "forward"
                         color: fwdBtn.hovered ? "#00F0FF" : "#CBD5E1"
-                        font.pixelSize: 18
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                        iconSize: 22
                     }
 
                     onClicked: playerController.seekRelative(10)
@@ -667,6 +664,7 @@ ApplicationWindow {
                 // 5. Next Track Button
                 Button {
                     id: nextBtn
+                    Accessible.name: qsTr("Next track")
                     implicitWidth: 46
                     implicitHeight: 46
                     hoverEnabled: true
@@ -680,12 +678,10 @@ ApplicationWindow {
                         Behavior on border.color { ColorAnimation { duration: 120 } }
                     }
 
-                    contentItem: Text {
-                        text: "⏭"
+                    contentItem: MediaIcon {
+                        name: "next"
                         color: nextBtn.hovered ? "#00F0FF" : "#CBD5E1"
-                        font.pixelSize: 18
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                        iconSize: 22
                     }
 
                     onClicked: playerController.next()

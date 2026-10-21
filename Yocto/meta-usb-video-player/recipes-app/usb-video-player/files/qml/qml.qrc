@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/ui">
         <file>main.qml</file>
+        <file>MediaIcon.qml</file>
         <file>VideoSurfaceQt5.qml</file>
         <file>VideoSurfaceQt6.qml</file>
     </qresource>
