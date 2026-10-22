@@ -20,6 +20,8 @@ UsbPlaylistReader::UsbPlaylistReader(UsbPlaylistModel& model, QString playlistPa
         };
     }
 
+    // Watch notifications can arrive in bursts or be lost after atomic rename.
+    // Debounce handles bursts; periodic polling also catches USB mount changes.
     debounce_.setSingleShot(true);
     debounce_.setInterval(100);
     poll_.setInterval(1000);
@@ -40,6 +42,8 @@ bool UsbPlaylistReader::isMounted() const {
 }
 
 void UsbPlaylistReader::armWatcher() {
+    // Watch both the file and its parent: atomic playlist replacement can remove
+    // the old file watch, so later reloads must attach to the replacement inode.
     const QString parent = QFileInfo(playlistPath_).absolutePath();
     if (watcher_.directories().contains(parent) == false && QDir(parent).exists() == true) {
         watcher_.addPath(parent);
@@ -82,6 +86,8 @@ void UsbPlaylistReader::reload() {
         model_.replaceFiles({});
         return;
     }
+    // Avoid rebuilding the QML model for an unchanged snapshot; a mount change
+    // clears loaded_ so reinserted storage is validated even with identical text.
     if (loaded_ == true && payload == lastPayload_) {
         return;
     }
@@ -95,6 +101,8 @@ void UsbPlaylistReader::reload() {
         // Preserve spaces and Unicode in names; the publisher uses LF, not CRLF.
         const QFileInfo entry(line);
         const QString canonical = entry.canonicalFilePath();
+        // Accept only readable media canonically beneath this USB mount; exclude
+        // duplicates, direct symlinks and paths escaping through a parent symlink.
         if (QDir::isAbsolutePath(line) == false || entry.isFile() == false
             || entry.isReadable() == false || entry.isSymLink() == true
             || root.isEmpty() == true || canonical.startsWith(root + QLatin1Char('/')) == false

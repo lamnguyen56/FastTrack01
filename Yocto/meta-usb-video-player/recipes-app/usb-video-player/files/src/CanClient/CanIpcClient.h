@@ -23,9 +23,12 @@ class CanIpcClient : public QObject {
     Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged)
 
 public:
+    /** @brief Bind the nonblocking local command socket and attach its Qt notifier. */
     explicit CanIpcClient(QObject *parent = nullptr);
+    /** @brief Close the local descriptor and remove its socket path on Linux. */
     ~CanIpcClient();
 
+    /** @brief Report whether this client successfully bound its local socket. */
     bool isConnected() const { return m_connected; }
 
     /// Được gọi từ QML/C++ để gửi telemetry ngược lại cho can-daemon
@@ -41,15 +44,16 @@ signals:
     void connectedChanged();
 
 private slots:
+    /** @brief Validate one available command packet and emit transport signals. */
     void onSocketDataReady();
 
 private:
-    int m_sockfd{-1};
-    bool m_connected{false};
-    uint8_t m_aliveCounter{0};
+    int m_sockfd{-1}; ///< Local Unix datagram socket; -1 when unavailable.
+    bool m_connected{false}; ///< Local bind success; does not probe can-daemon.
+    uint8_t m_aliveCounter{0}; ///< Rolling status send-attempt counter.
 
 #ifdef Q_OS_LINUX
-    QSocketNotifier *m_notifier{nullptr};
+    QSocketNotifier *m_notifier{nullptr}; ///< QObject-owned readability notifier.
 #endif
 };
 

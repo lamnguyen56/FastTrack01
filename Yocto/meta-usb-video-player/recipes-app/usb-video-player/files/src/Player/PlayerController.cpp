@@ -54,6 +54,7 @@ void PlayerController::handleEndOfMedia() {
 QString PlayerController::errorText() const { return errorText_; }
 
 void PlayerController::synchronizePlaylist() {
+    // Preserve selection by file path when a playlist refresh changes row indices.
     const int preserved = model_.indexOf(source_.toLocalFile());
     if (preserved >= 0 && source_.isEmpty() == false) {
         currentIndex_ = preserved;
@@ -90,6 +91,8 @@ void PlayerController::selectTrack(int index) {
     if (index < 0 || index >= model_.count()) {
         return;
     }
+    // Selecting the current row still requests a stop/reopen, even though its
+    // unchanged URL will not emit sourceChanged in setSelection().
     if (index == currentIndex_) {
         emit stopRequested();
     }

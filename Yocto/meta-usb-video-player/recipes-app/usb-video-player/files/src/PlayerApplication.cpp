@@ -8,12 +8,14 @@
 PlayerApplication::PlayerApplication()
     : usb_(playlist_, QString::fromUtf8(FastTrack::DEFAULT_USB_PLAYLIST_PATH),
            QString::fromUtf8(FastTrack::DEFAULT_USB_MOUNT_POINT)), controller_(playlist_) {
+    // CAN commands and UI controls share one controller and the same selection state.
     QObject::connect(&can_, &CanIpcClient::commandPlay, &controller_, &PlayerController::play);
     QObject::connect(&can_, &CanIpcClient::commandPause, &controller_, &PlayerController::pause);
     QObject::connect(&can_, &CanIpcClient::commandNext, &controller_, &PlayerController::next);
     QObject::connect(&can_, &CanIpcClient::commandPrev, &controller_, &PlayerController::previous);
     QObject::connect(&can_, &CanIpcClient::commandSeek, &controller_, &PlayerController::seekRelative);
 
+    // Context objects are members and outlive engine_: QML keeps non-owning access.
     engine_.rootContext()->setContextProperty("usbPlaylist", &playlist_);
     engine_.rootContext()->setContextProperty("usbReader", &usb_);
     engine_.rootContext()->setContextProperty("playerController", &controller_);

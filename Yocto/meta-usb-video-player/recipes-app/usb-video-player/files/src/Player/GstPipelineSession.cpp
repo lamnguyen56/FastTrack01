@@ -16,6 +16,8 @@ QString GstPipelineSession::create() {
     if (pipeline_ != nullptr) {
         return {};
     }
+    // Keep one GL sink bin for this session: playbin owns decoding and audio,
+    // while this bin uploads/converts video for the existing QML video item.
     GstElement* video = gst_bin_new(nullptr);
     GstElement* upload = gst_element_factory_make("glupload", nullptr);
     GstElement* convert = gst_element_factory_make("glcolorconvert", nullptr);
@@ -33,6 +35,7 @@ QString GstPipelineSession::create() {
         gst_object_unref(player);
         return QStringLiteral("Cannot link the GL video sink");
     }
+    // Expose glupload input as the bin input so playbin can link video to it.
     GstPad* pad = gst_element_get_static_pad(upload, "sink");
     GstPad* ghost = pad != nullptr ? gst_ghost_pad_new("sink", pad) : nullptr;
     if (pad != nullptr) gst_object_unref(pad);
@@ -91,6 +94,8 @@ QString GstPipelineSession::reset(const QUrl& source) {
         if (error.isEmpty() == false) return error;
     }
     if (pipeline_ != nullptr) {
+        // Discard messages from the previous URI while its stream is reset.
+        // Re-enable the bus before opening the next URI so its errors are visible.
         gst_bus_set_flushing(bus_, TRUE);
         if (used_ == true) {
             flush();
@@ -108,6 +113,8 @@ QString GstPipelineSession::reset(const QUrl& source) {
             LOG_I("Opening media: ", uri.constData());
         }
     }
+    // These flags describe the new URI; old preroll, EOS and frame counters
+    // must not make a newly selected video appear ready before it delivers data.
     used_ = false;
     loaded_ = source.isEmpty() == false;
     prerolled_ = false;
@@ -197,6 +204,8 @@ QString GstPipelineSession::drainBus() {
         gst_message_unref(message);
     }
 
+    // File/device/buffer failures take priority over missing-codec hints.
+    // Only explicit missing-video-decoder caps justify an unsupported-video message.
     if (resourceError.isEmpty() == false) return resourceError;
     if (unsupportedVideo.isEmpty() == false) return unsupportedVideo;
     return backendError;
@@ -211,6 +220,8 @@ GstSessionSnapshot GstPipelineSession::poll() {
     GstState state = GST_STATE_NULL;
     GstState pending = GST_STATE_VOID_PENDING;
     gst_element_get_state(pipeline_, &state, &pending, 0);
+    // PAUSED completion establishes the stream topology. Reject audio-only
+    // playback here when no supported video stream reached the pipeline.
     if (prerolled_ == false && state == GST_STATE_PAUSED && pending == GST_STATE_VOID_PENDING) {
         gint count = 0;
         g_object_get(pipeline_, "n-video", &count, nullptr);
@@ -225,6 +236,7 @@ GstSessionSnapshot GstPipelineSession::poll() {
     gint64 value = 0;
     if (gst_element_query_position(pipeline_, GST_FORMAT_TIME, &value) != FALSE) snapshot.position = value / GST_MSECOND;
     if (gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &value) != FALSE) snapshot.duration = value / GST_MSECOND;
+    // Query the active pipeline rather than assuming every local file is seekable.
     GstQuery* query = gst_query_new_seeking(GST_FORMAT_TIME);
     gboolean seekable = FALSE;
     if (gst_element_query(pipeline_, query) != FALSE) gst_query_parse_seeking(query, nullptr, &seekable, nullptr, nullptr);
@@ -243,6 +255,7 @@ void GstPipelineSession::release() {
         gst_bus_set_flushing(bus_, TRUE);
         flush();
         gst_element_set_state(pipeline_, GST_STATE_NULL);
+        // Drop the pipeline only on the worker after streaming has been stopped.
         gst_object_unref(pipeline_);
         pipeline_ = nullptr;
     }

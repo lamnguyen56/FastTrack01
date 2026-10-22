@@ -46,6 +46,8 @@ void UsbPlaylistModel::replaceFiles(const QStringList& files) {
         return;
     }
 
+    // Qt requires reset notifications around a wholesale list replacement.
+    // Emit playlistChanged afterwards so the controller sees the complete new list.
     beginResetModel();
     files_ = files;
     endResetModel();

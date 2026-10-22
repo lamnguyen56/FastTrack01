@@ -7,6 +7,7 @@
 /** @brief Keep the latest media selection, without queueing every Next/Previous click. */
 class LatestMediaRequest {
 public:
+    /** @brief One selection plus its version for rejecting obsolete completions. */
     struct Request {
         QUrl source; ///< Empty means release the current stream without starting another.
         quint64 revision; ///< Monotonically increasing intent version.

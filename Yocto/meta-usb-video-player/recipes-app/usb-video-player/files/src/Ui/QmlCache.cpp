@@ -13,6 +13,8 @@ QString QmlCache::configure(const QString& sourceRoot, const QString& cacheRoot)
     while (iterator.hasNext() == true) {
         sources.append(iterator.next());
     }
+    // Directory enumeration order is not stable; sorting gives identical source
+    // trees the same fingerprint across runs.
     sources.sort();
     if (sources.isEmpty() == true) {
         qputenv("QML_DISABLE_DISK_CACHE", "1");
@@ -33,6 +35,8 @@ QString QmlCache::configure(const QString& sourceRoot, const QString& cacheRoot)
             qputenv("QML_DISABLE_DISK_CACHE", "1");
             return QString();
         }
+        // Include resource paths and NUL separators so filenames and file contents
+        // cannot be concatenated into an ambiguous fingerprint input.
         hash.addData(source.toUtf8());
         hash.addData("\0", 1);
         hash.addData(bytes);

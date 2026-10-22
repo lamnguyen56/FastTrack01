@@ -7,6 +7,8 @@
 
 GstCommandWorker::GstCommandWorker(QObject* parent, int timeoutMs)
     : QObject(parent), timeoutMs_(timeoutMs) {
+    // The executor receives blocking jobs on GstControl. The facade and watchdog
+    // remain on the GUI thread so timeout detection does not depend on that worker.
     executor_ = new QObject;
     executor_->moveToThread(&thread_);
     thread_.setObjectName(QStringLiteral("GstControl"));
@@ -31,6 +33,8 @@ bool GstCommandWorker::submit(const QString& label, std::function<void()> work,
     if (busy_ == true || stopped_ == true) {
         return false;
     }
+    // Reserve the single operation slot before queueing work; repeated UI clicks
+    // cannot build an unbounded queue of decoder state changes.
     busy_ = true;
     label_ = label;
     deadline_.start(timeoutMs_);
@@ -44,6 +48,7 @@ bool GstCommandWorker::submit(const QString& label, std::function<void()> work,
             LOG_E("Unhandled media worker exception");
             std::_Exit(EXIT_FAILURE);
         }
+        // Return to the facade thread before touching its timer or notifying QML.
         QMetaObject::invokeMethod(this, [this, completed]() {
             deadline_.stop();
             busy_ = false;

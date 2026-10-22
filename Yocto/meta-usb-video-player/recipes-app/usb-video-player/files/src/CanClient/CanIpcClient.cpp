@@ -28,6 +28,8 @@ CanIpcClient::CanIpcClient(QObject *parent) : QObject(parent) {
         return;
     }
 
+    // Let the Qt event loop notify readable datagrams instead of blocking the UI
+    // in recv(). A bound socket indicates local readiness, not CAN peer health.
     m_notifier = new QSocketNotifier(m_sockfd, QSocketNotifier::Read, this);
     connect(m_notifier, &QSocketNotifier::activated, this, &CanIpcClient::onSocketDataReady);
 
@@ -52,6 +54,7 @@ CanIpcClient::~CanIpcClient() {
 void CanIpcClient::onSocketDataReady() {
 #ifdef Q_OS_LINUX
     FastTrack::CanCommandPacket cmd;
+    // Process only a complete protocol packet; shorter datagrams are ignored.
     ssize_t bytes = recv(m_sockfd, &cmd, sizeof(cmd), 0);
     if (bytes != sizeof(cmd)) return;
 
@@ -87,6 +90,8 @@ void CanIpcClient::sendStatus(int playbackState, int trackIndex,
 #ifdef Q_OS_LINUX
     if (m_sockfd < 0) return;
 
+    // Preserve the common packet layout shared with can-daemon; the alive
+    // counter advances for each send attempt and wraps at the uint8_t boundary.
     FastTrack::CanStatusPacket status;
     status.playbackState    = static_cast<uint8_t>(playbackState);
     status.trackIndex       = static_cast<uint8_t>(trackIndex);

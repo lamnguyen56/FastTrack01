@@ -23,12 +23,15 @@ namespace {
 /** @brief The only state operation requiring Qt's current render-thread GL context. */
 class SinkReadyJob final : public QRunnable {
 public:
+    /** @brief Retain the sink until its render job finishes or is cancelled. */
     SinkReadyJob(GstElement* sink, std::shared_ptr<RenderSessionGate> gate,
                  std::function<void(bool)> completed)
         : sink_(GST_ELEMENT(gst_object_ref(sink))), gate_(std::move(gate)), completed_(std::move(completed)) {}
 
+    /** @brief Release the job reference independently of the backend reference. */
     ~SinkReadyJob() override { gst_object_unref(sink_); }
 
+    /** @brief Prepare the sink using Qt render-thread GL context, then queue completion. */
     void run() override {
         {
             std::lock_guard<std::mutex> lock(gate_->mutex);
@@ -53,6 +56,8 @@ private:
 
 GstPlayerBackend::GstPlayerBackend(PlayerController& controller, QObject* parent)
     : QObject(parent), controller_(controller), operations_(this) {
+    // Controller signals carry user intent; only worker snapshots report actual
+    // decoder state. Slots below must never perform blocking pipeline operations.
     timer_.setInterval(100);
     connect(&timer_, &QTimer::timeout, this, &GstPlayerBackend::poll);
     connect(&controller_, &PlayerController::sourceChanged, this, [this]() {
@@ -89,6 +94,8 @@ GstPlayerBackend::~GstPlayerBackend() {
 }
 
 bool GstPlayerBackend::initialize() {
+    // Creating this plugin registers its QML type before the engine loads the UI.
+    // HardwareDecodePolicy has already initialized GStreamer in PlayerApplication.
     sink_ = gst_element_factory_make("qmlglsink", nullptr);
     if (sink_ == nullptr) {
         LOG_E("Missing qmlglsink; install gstreamer1.0-plugins-good-qmlgl");
@@ -121,6 +128,8 @@ void GstPlayerBackend::attach(QQuickItem* item) {
 
 void GstPlayerBackend::requestSource(const QUrl& source) {
     if (closed_ == true) return;
+    // Invalidate in-flight callbacks immediately; only the newest selection may
+    // update UI state after the previous worker operation completes.
     requests_.replace(source);
     desired_ = GST_STATE_PAUSED;
     seek_.reset();
@@ -141,6 +150,8 @@ void GstPlayerBackend::requestSource(const QUrl& source) {
 void GstPlayerBackend::schedule() {
     if (closed_ == true || scheduled_ == true) return;
     scheduled_ = true;
+    // Defer once so Stop -> SourceChanged -> Play from a single click is handled
+    // as one final intent instead of three competing pipeline transitions.
     QTimer::singleShot(0, this, [this]() {
         scheduled_ = false;
         dispatch();
@@ -151,6 +162,8 @@ void GstPlayerBackend::dispatch() {
     if (closed_ == true || session_ == nullptr || item_.isNull() == true
         || operations_.busy() == true || preparing_ == true) return;
 
+    // Selection/reset has priority over seek and playback-state requests.
+    // The busy guard above keeps all session access serialized on GstControl.
     if (requests_.pending() == true) {
         const auto request = requests_.take();
         auto error = std::make_shared<QString>();
@@ -189,6 +202,8 @@ void GstPlayerBackend::dispatch() {
         });
         return;
     }
+    // Preroll and buffering temporarily require PAUSED even when the user wants
+    // PLAYING. Resume the requested state after a worker snapshot confirms readiness.
     const GstState target = prerolled_ == false || buffering_ == true ? GST_STATE_PAUSED : desired_;
     if (target == submitted_) return;
     submitted_ = target;
@@ -206,6 +221,8 @@ void GstPlayerBackend::prepareSink(quint64 revision) {
     preparing_ = true;
     gate_ = std::make_shared<RenderSessionGate>();
     const auto gate = gate_;
+    // This one READY operation needs Qt current GL context. Normal pipeline
+    // transitions remain on GstControl; their dispatch waits for preparing_ to clear.
     item_->window()->scheduleRenderJob(new SinkReadyJob(sink_, gate, [this, revision](bool success) {
         QMetaObject::invokeMethod(this, [this, revision, success]() {
             if (closed_ == true) return;
@@ -230,6 +247,8 @@ void GstPlayerBackend::poll() {
     dispatch();
     if (operations_.busy() == true || loaded_ == false || ready_ == false || requests_.pending() == true) return;
     const quint64 revision = requests_.revision();
+    // Worker fills a value snapshot, then its completion applies it on the GUI.
+    // Revision checks reject data belonging to a track that has since been replaced.
     auto snapshot = std::make_shared<GstSessionSnapshot>();
     operations_.submit(QStringLiteral("query playback"), [this, snapshot]() {
         *snapshot = session_->poll();
@@ -284,6 +303,8 @@ void GstPlayerBackend::detach() {
             std::_Exit(EXIT_FAILURE);
         }
     }
+    // Final teardown drains the worker before detaching the QML widget. This
+    // prevents a queued operation from accessing a released session or video item.
     operations_.shutdown([this]() {
         if (session_ != nullptr) session_->release();
     });
