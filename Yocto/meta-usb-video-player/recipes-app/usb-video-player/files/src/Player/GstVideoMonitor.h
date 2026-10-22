@@ -16,7 +16,7 @@ public:
     /** @brief Snapshot counters after preroll, before starting the playback clock. */
     void begin();
 
-    /** @brief Read sink progress on the Qt thread and rate-limit stalled-video warnings. */
+    /** @brief Read sink progress on GstControl and rate-limit stalled-video warnings. */
     bool poll(bool playing);
 
 private:

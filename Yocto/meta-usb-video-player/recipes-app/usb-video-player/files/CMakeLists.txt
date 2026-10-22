@@ -49,7 +49,10 @@ if(QT_VERSION_MAJOR EQUAL 5)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GSTREAMER REQUIRED IMPORTED_TARGET gstreamer-1.0)
     target_sources(${PROJECT_NAME} PRIVATE src/Player/GstPlayerBackend.cpp src/Player/GstPlayerBackend.h
-        src/Player/GstVideoMonitor.cpp src/Player/GstVideoMonitor.h)
+        src/Player/GstVideoMonitor.cpp src/Player/GstVideoMonitor.h
+        src/Player/GstPipelineSession.cpp src/Player/GstPipelineSession.h
+        src/Player/GstCommandWorker.cpp src/Player/GstCommandWorker.h
+        src/Player/LatestMediaRequest.h)
     target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::GSTREAMER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE USB_REQUIRE_HARDWARE_H264=1)
 endif()

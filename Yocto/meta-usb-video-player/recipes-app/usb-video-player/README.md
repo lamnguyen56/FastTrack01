@@ -20,7 +20,9 @@ CAN IPC -> CanIpcClient -> PlayerController <- UI buttons
 | `UsbPlaylistModel` | Expose ordered filename/path roles and count through QAbstractListModel |
 | `PlayerController` | Selection, bounded seek requests, transport commands, actual timeline/state and errors |
 | `PlayerApplication` | Wire USB, CAN and the QML view; keep main.cpp small |
-| `GstPlayerBackend` | Direct GStreamer transport, bus errors/EOS, buffered playback and timeline polling |
+| `GstPlayerBackend` | GUI-only transport intent, latest-selection coalescing and immutable worker snapshots |
+| `GstPipelineSession` | Pipeline ownership, reset/flush/state/seek and bus/timeline queries on GstControl |
+| `GstCommandWorker` | Single-operation executor with GUI watchdog and serialized shutdown |
 | `VideoSurfaceQt5.qml` | GstGLVideoItem composited by Qt Quick on the Pi |
 | `VideoSurfaceQt6.qml` | Separate Qt6 desktop adapter with audio/video output APIs |
 
@@ -390,7 +392,7 @@ Headless tests check failure messages and UI state, not hardware/GStreamer runti
 
 ## Experimental direct GStreamer backend (Qt5 / Pi)
 
-The Pi adapter no longer uses Qt Multimedia. `GstPlayerBackend` owns `playbin`
+The Pi adapter no longer uses Qt Multimedia. `GstPipelineSession` owns `playbin`
 with a custom video sink bin: `glupload ! glcolorconvert ! qmlglsink`.
 Audio stays in playbin, sharing its clock with video. HardwareDecodePolicy still
 allows only v4l2h264dec for video; unsupported video does not fall back to CPU.
@@ -398,10 +400,10 @@ Qt6 desktop development retains its existing Qt Multimedia adapter.
 
 The sink plugin is loaded before QML to register GstGLVideoItem. Each URI
 initializes qmlglsink to READY on the Qt render thread before starting playbin,
-so GL elements receive Qt's display/context. A cancellation gate protects fast
-track changes from late initialization. Bus messages are polled on the Qt thread;
+so GL elements receive Qt's display/context. Revision checks reject obsolete
+selection completions. Bus and timeline queries run on the GstControl worker;
 EOS goes through PlayerController for auto-next, while errors stop the session.
-USB removal releases the pipeline and hides the old video item. At EOS with
+USB removal releases the stream/file while retaining the pipeline, and hides the old video item. At EOS with
 auto-next off, the pipeline is retained to hold the last frame until replay or
 selection. Position updates are limited to ten per second.
 
@@ -427,9 +429,9 @@ find "$BUILDDIR/tmp/work" -path '*/gstreamer1.0-plugins-good/*/image/usr/lib/gst
 # Copy the resulting ARM64 file to root@PI_IP:/tmp/libgstqmlgl.so.
 ```
 
-On Pi, run `ldd /tmp/libgstqmlgl.so` and check that no dependency says `not found`.
-Then stop the player, install it with
-`install -m 0755 /tmp/libgstqmlgl.so /usr/lib/gstreamer-1.0/libgstqmlgl.so`, and
+On Pi, run `/lib/ld-linux-aarch64.so.1 --list /tmp/libgstqmlgl.so` to check dependencies.
+Then stop the player, copy the plugin with
+`cp /tmp/libgstqmlgl.so /usr/lib/gstreamer-1.0/libgstqmlgl.so` and set mode 0755 with chmod, then
 verify `gst-inspect-1.0 qmlglsink` before deploying the new executable.
 This assumes matching libraries; otherwise deploy the built packages/dependencies
 or use the image. Manual plugin copies are replaced on the next image flash.
@@ -463,8 +465,9 @@ decoder immediately followed by Play. Paused/resumed playback stays in its sessi
 The last frame is retained at EOS until the user presses Play or changes media.
 
 playbin can internally take its sink chain to NULL while resetting to READY, so
-qmlglsink is prepared on the Qt render thread before every new preroll. Pending
-render jobs are cancelled before reset; stale completions cannot start playback.
+qmlglsink is prepared on the Qt render thread before every new preroll. A reset
+waits for render-job completion through queued callbacks, without locking the GUI;
+obsolete completions cannot start playback. Final shutdown cancels queued jobs.
 Error logs include the originating GStreamer element to distinguish a filesrc
 I/O failure from a decoder failure. These changes address lifecycle risks; a
 reported native SIGSEGV still requires a backtrace if it recurs on the Pi.
@@ -507,3 +510,42 @@ If sink counters advance but the picture is black, investigate Qt/GL composition
 if no buffers render and dropped rises, investigate decoder/timing upstream.
 The native frame-progress test covers retained counters, resets, first delivery
 and pause/EOS state retention. It cannot validate hardware rendering.
+### Rapid Next/Previous and blocked V4L2 shutdown
+
+A captured hang showed the GUI inside gst_pad_stop_task during a V4L2 state
+change, while the decoder task remained in gst_poll_wait/buffer acquisition.
+Normal pipeline operations no longer run on the GUI thread. GstCommandWorker
+runs one operation at a time; GstPipelineSession owns the persistent pipeline.
+The Qt facade only updates transport intent and receives immutable snapshots.
+An ASYNC state-change return is awaited on the worker for up to five seconds
+before another operation can reuse the decoder. This wait never runs on the GUI.
+GL sink READY remains a Qt render-thread job, with no worker operation running
+concurrently. The GUI does not wait on a render-job mutex during selection.
+
+Stop/Source/Play from one UI event are deferred together. LatestMediaRequest
+retains one pending source, replacing earlier clicks during an in-flight reset.
+Revision checks prevent an obsolete reset, poll or render completion from
+starting the wrong track. Pending seek is scoped to the selected URI.
+
+Reset sends FLUSH_START before transitioning the used stream to READY, allowing
+V4L2 event handling to unlock output/capture polls before joining source tasks.
+FLUSH_STOP follows the stopped transition; stale bus messages are discarded.
+This ordering must still be validated with the actual driver on the Pi.
+
+A 15-second watchdog covers each worker operation, including reset, seek and
+queries. On timeout the process logs the operation and exits with failure so
+systemd can restart it. It never terminates a QThread or frees a still-used
+pipeline. This is bounded recovery, not a kernel/firmware reset; MMAL/VCHIQ may
+still require reboot if the driver itself remains wedged. Final shutdown drains
+one cleanup operation after any current operation and has the same bounded wait.
+
+The headless worker test runs the actual executor, checks that GUI events continue
+during a deliberately slow operation, rejects concurrent submissions, verifies
+latest-source revision behavior and cleanup, and tests timeout exit in a child
+process. Hardware flush/stop behavior and EGL rendering still require Pi tests.
+
+Deploy only the new app executable; the existing qmlglsink plugin is unchanged.
+Verify `serialized GstControl worker` in startup logs, then test rapid Next/Prev,
+720p/1080p switching, Pause during loading, held EOS/replay, auto-next and unplug.
+If `GStreamer operation timed out` appears, capture that label and the kernel log;
+do not treat automatic service restart as proof that decoder teardown is fixed.
