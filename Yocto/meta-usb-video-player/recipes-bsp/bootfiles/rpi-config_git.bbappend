@@ -5,9 +5,9 @@ VC4DTBO:raspberrypi3-64 = "vc4-kms-v3d"
 ENABLE_SPI_BUS:raspberrypi3-64 = "1"
 CAN0_INTERRUPT_PIN:raspberrypi3-64 = "25"
 
-# Unknown until the actual HAT crystal is checked. Set to its frequency in Hz.
-# Example only for a confirmed 8 MHz crystal: "8000000".
-CAN_OSCILLATOR:raspberrypi3-64 = ""
+# Default for popular MCP2515 modules is 8 MHz (8000000 Hz).
+# If your module uses a 16 MHz crystal (marked 16.000), change this to "16000000".
+CAN_OSCILLATOR:raspberrypi3-64 = "8000000"
 ENABLE_CAN:raspberrypi3-64 = "${@'1' if d.getVar('CAN_OSCILLATOR').strip() else '0'}"
 ENABLE_DUAL_CAN:raspberrypi3-64 = "0"
 

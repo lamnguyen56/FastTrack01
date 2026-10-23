@@ -42,6 +42,9 @@ PARALLEL_MAKE = "-j 6"
 # Enable UART for serial-console debugging.
 ENABLE_UART = "1"
 
+# Enable SPI Bus for MCP2515 CAN controller
+ENABLE_SPI_BUS = "1"
+
 
 
 # -----------------------------------------------------------------------------
@@ -49,10 +52,11 @@ ENABLE_UART = "1"
 # -----------------------------------------------------------------------------
 
 # Downloaded source archives and Git repositories.
-DL_DIR = "${TOPDIR}/../yocto_downloads"
+# Tự động ưu tiên path trên máy lamnt nếu tồn tại thư mục, ngược lại fallback về default
+DL_DIR = "${@'/home/lamnt/yocto/downloads' if os.path.isdir('/home/lamnt/yocto/downloads') else '${TOPDIR}/../yocto_downloads'}"
 
 # Reusable outputs from completed build tasks.
-SSTATE_DIR = "${TOPDIR}/../yocto_sstate"
+SSTATE_DIR = "${@'/home/lamnt/yocto/build/sstate-cache' if os.path.isdir('/home/lamnt/yocto/build/sstate-cache') else '${TOPDIR}/../yocto_sstate'}"
 
 # meta-qt5 uses QT_GIT_PROTOCOL for its Git fetcher URLs.
 # Use HTTPS instead of the native Git protocol (TCP port 9418).

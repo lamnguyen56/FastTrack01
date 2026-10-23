@@ -427,17 +427,47 @@ Sau khi CubeMX sinh code xong, bạn copy các file mã nguồn logic từ thư 
 
 ## 7. QUY TRÌNH KIỂM THỬ THỰC TẾ VỚI RASPBERRY PI TARGET
 
-### Bước 1: Kích hoạt giao tiếp SocketCAN trên Raspberry Pi
-Mở terminal trên Raspberry Pi và chạy các lệnh:
-```bash
-# Thiết lập bitrate 500 kbps và bật giao diện can0
-sudo ip link set can0 down
-sudo ip link set can0 up type can bitrate 500000 restart-ms 100
+> 📘 **Cẩm nang chi tiết cho phía Raspberry Pi Yocto:** Xem thêm tài liệu chuyên sâu tại [Yocto/CAN_PI_TESTING_GUIDE.md](../Yocto/CAN_PI_TESTING_GUIDE.md).
 
-# Kiểm tra trạng thái interface
-ip -details link show can0
-```
-*(Nếu thấy `state ERROR-ACTIVE`, đường truyền vật lý đã sẵn sàng!)*
+### Bước 0: Kích Hoạt Phần Cứng MCP2515 Trên Raspberry Pi (`config.txt`)
+Trước khi có thể mở giao diện `can0`, kernel Linux trên Raspberry Pi cần được nạp Device Tree Overlay cho chip MCP2515:
+
+1. **Nếu bạn đang dùng thẻ nhớ chạy sẵn:** Mở file cấu hình boot qua SSH:
+   ```bash
+   sudo nano /boot/config.txt
+   # (Hoặc /boot/firmware/config.txt tùy phiên bản OS)
+   ```
+   Thêm 3 dòng sau vào cuối file rồi lưu lại (`Ctrl + O`, `Enter`, `Ctrl + X`):
+   ```ini
+   dtparam=spi=on
+   dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25
+   spimaxfrequency=10000000
+   ```
+   *(Lưu ý: Nếu thạch anh trên module MCP2515 ghi số `16.000` thì đổi thành `oscillator=16000000`).*
+   Sau đó khởi động lại Pi: `sudo reboot`.
+
+2. **Nếu build bản OS mới bằng Yocto:**
+   Hệ thống Yocto trong thư mục [Yocto/meta-usb-video-player/recipes-bsp/bootfiles/rpi-config_git.bbappend](../Yocto/meta-usb-video-player/recipes-bsp/bootfiles/rpi-config_git.bbappend) đã được cấu hình sẵn `CAN_OSCILLATOR = "8000000"` và `ENABLE_CAN = "1"`, image sinh ra sẽ tự động kích hoạt CAN!
+
+---
+
+### Bước 1: Kiểm Tra Driver & Bật Giao Tiếp SocketCAN Trên Raspberry Pi
+1. **Kiểm tra kernel đã nhận chip MCP2515:**
+   ```bash
+   dmesg | grep -Ei 'mcp251|spi|can'
+   ```
+   *(Phải nhìn thấy dòng: `mcp251x spi0.0 can0: MCP2515 successfully initialized`)*.
+
+2. **Kích hoạt giao tiếp SocketCAN `can0` ở bitrate 500 kbps:**
+   ```bash
+   # Thiết lập bitrate 500 kbps và bật giao diện can0
+   sudo ip link set can0 down
+   sudo ip link set can0 up type can bitrate 500000 restart-ms 100
+
+   # Kiểm tra trạng thái interface
+   ip -details link show can0
+   ```
+   *(Khi thấy `state ERROR-ACTIVE`, đường truyền vật lý đã sẵn sàng!)*
 
 ---
 
