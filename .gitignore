@@ -51,6 +51,8 @@ Thumbs.db
 !/Yocto/meta-usb-video-player/
 !/Yocto/tools/
 !/Docs/
+!/Hardware_Gateway_STM32F407/
+/Hardware_Gateway_STM32F407/STM32_CAN_Gateway/
 
 # Local Wi-Fi credentials; keep out of Git.
 /Yocto/meta-usb-video-player/recipes-connectivity/wifi/files/private/
