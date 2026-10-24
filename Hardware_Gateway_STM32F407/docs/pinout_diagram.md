@@ -24,11 +24,11 @@
  |   - PD15: Blue (Play)  |                                                 |   |
  |                        |                                                 |   |
  |   [Cụm 3 Nút Bấm]      |                        Cặp cáp xoắn đôi         |   |
- |   - Nút 1: PE0 / PA0   |                     Trở đầu cuối 120Ω ở 2 đầu   |   |
+ |   - Nút 1: PE4 / PA0   |                     Trở đầu cuối 120Ω ở 2 đầu   |   |
  |     (Play / Pause)     |                                                 |   |
- |   - Nút 2: PE1         |                                                 |   |
+ |   - Nút 2: PE5         |                                                 |   |
  |     (Next / Prev)      |                                                 |   |
- |   - Nút 3: PE2         |                                                 |   |
+ |   - Nút 3: PE6         |                                                 |   |
  |     (Seek +10s / -10s) |                                                 |   |
  |                        |                                                 |   |
  |                    GND |=============================================+   |   |
@@ -87,8 +87,8 @@
 ---
 
 ### 2.3 Cụm 3 Nút Bấm Điều Khiển (Port E)
-| Tên chân STM32F407 | Chức năng nút bấm | Kiểu đấu dây & Hành vi |
-| :--- | :--- | :--- |
-| **`PE0`** *(hoặc `PA0`)* | **Nút 1: PLAY / PAUSE** | 1 chân nút nối `PE0`, chân còn lại nối `GND` (Active LOW)<br>*(Hoặc dùng trực tiếp nút xanh `PA0` có sẵn trên board Discovery)*<br>$\to$ Nhấn 1 lần: Đảo trạng thái Play $\leftrightarrow$ Pause |
-| **`PE1`** | **Nút 2: NEXT / PREVIOUS** | 1 chân nút nối `PE1`, chân còn lại nối `GND` (Active LOW)<br>$\to$ **Ấn 1 lần:** `NEXT TRACK`<br>$\to$ **Ấn 2 lần (Double Click):** `PREVIOUS TRACK`<br>🛡️ *Khóa chống spam: Bỏ qua lần ấn thứ 3, 4* |
-| **`PE2`** | **Nút 3: TUA +10S / -10S** | 1 chân nút nối `PE2`, chân còn lại nối `GND` (Active LOW)<br>$\to$ **Ấn 1 lần:** `TUA TIẾN +10S` (Fast Forward)<br>$\to$ **Ấn 2 lần (Double Click):** `TUA LÙI -10S` (Fast Backward)<br>🛡️ *Khóa chống spam: Bỏ qua lần ấn thứ 3, 4* |
+| Tên chân STM32F407 | Vị trí Header Discovery | Chức năng nút bấm | Kiểu đấu dây & Hành vi |
+| :--- | :--- | :--- | :--- |
+| **`PE4`** *(hoặc `PA0`)* | Header P2 Pin 7 | **Nút 1: PLAY / PAUSE** | 1 chân nút nối `PE4`, chân còn lại nối `GND` (Active LOW)<br>*(Hoặc dùng trực tiếp nút xanh `PA0` có sẵn trên board Discovery)*<br>$\to$ Nhấn 1 lần: Đảo trạng thái Play $\leftrightarrow$ Pause |
+| **`PE5`** | Header P2 Pin 8 | **Nút 2: NEXT / PREVIOUS** | 1 chân nút nối `PE5`, chân còn lại nối `GND` (Active LOW)<br>$\to$ **Ấn 1 lần:** `NEXT TRACK`<br>$\to$ **Ấn 2 lần (Double Click):** `PREVIOUS TRACK`<br>🛡️ *Khóa chống spam: Bỏ qua lần ấn thứ 3, 4* |
+| **`PE6`** | Header P2 Pin 9 | **Nút 3: TUA +10S / -10S** | 1 chân nút nối `PE6`, chân còn lại nối `GND` (Active LOW)<br>$\to$ **Ấn 1 lần:** `TUA TIẾN +10S` (Fast Forward)<br>$\to$ **Ấn 2 lần (Double Click):** `TUA LÙI -10S` (Fast Backward)<br>🛡️ *Khóa chống spam: Bỏ qua lần ấn thứ 3, 4* |

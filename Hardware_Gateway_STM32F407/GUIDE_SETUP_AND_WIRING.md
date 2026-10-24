@@ -22,9 +22,9 @@ Khi cần **đơn giản hóa tối đa**, loại bỏ toàn bộ các lớp Web
 +-----------------------------------------------------------------------------------+
 |                                                                                   |
 |  [ CỤM 3 NÚT NHẤN VẬT LÝ ]                                                         |
-|   - Nút 1 (PE0 / PA0): PLAY / PAUSE (Ấn 1 lần để đảo trạng thái)                  |
-|   - Nút 2 (PE1): NEXT (Ấn 1 lần) / PREVIOUS (Ấn 2 lần) - Chặn lần 3, 4            |
-|   - Nút 3 (PE2): TUA +10S (Ấn 1 lần) / TUA -10S (Ấn 2 lần) - Chặn lần 3, 4         |
+|   - Nút 1 (PE4 / PA0): PLAY / PAUSE (Ấn 1 lần để đảo trạng thái)                  |
+|   - Nút 2 (PE5): NEXT (Ấn 1 lần) / PREVIOUS (Ấn 2 lần) - Chặn lần 3, 4            |
+|   - Nút 3 (PE6): TUA +10S (Ấn 1 lần) / TUA -10S (Ấn 2 lần) - Chặn lần 3, 4         |
 |            |                                                                      |
 |            v                                                                      |
 |  +-------------------------+       CAN1_TX (PB9)      +------------------------+  |
@@ -129,9 +129,9 @@ Vì vi xử lý của Raspberry Pi không có phần cứng CAN tích hợp, Pi 
 #### B. Cụm 3 Nút Bấm Điều Khiển
 | Nút bấm | Chân MCU | Chế độ ngõ vào | Hành vi điều khiển |
 | :--- | :--- | :--- | :--- |
-| **Nút 1: PLAY / PAUSE** | `PE0` *(và đồng bộ nút `PA0` Onboard)* | Active LOW (Pull-up nội) *(PA0: Active HIGH)* | **Ấn 1 lần để đảo trạng thái phát:**<br>- Nếu đang dừng/tạm dừng $\to$ Gửi lệnh `PLAY` (`0x01`)<br>- Nếu đang phát $\to$ Gửi lệnh `PAUSE` (`0x02`)<br>*(Có khóa chống rung & cooldown 200ms)* |
-| **Nút 2: NEXT / PREVIOUS** | `PE1` | Active LOW (Pull-up nội) | **Không cần nhấn giữ - Phân biệt theo số lần bấm:**<br>- **Ấn 1 lần:** Nhảy video kế tiếp (`NEXT TRACK` - `0x03`) $\to$ LED xanh chớp 1 nhịp.<br>- **Ấn 2 lần (Double Click):** Quay lại video trước (`PREV TRACK` - `0x04`) $\to$ LED xanh chớp 2 nhịp nhanh.<br>🛡️ **Rào chắn chống spam:** Khóa tức thì sau cú bấm thứ 2, bỏ qua hoàn toàn các cú bấm thứ 3, 4! |
-| **Nút 3: TUA +10S / -10S** | `PE2` | Active LOW (Pull-up nội) | **Không cần nhấn giữ - Phân biệt theo số lần bấm:**<br>- **Ấn 1 lần:** Tua tiến 10 giây (`SEEK +10s` - `SeekCmd=0x05, Step=10`) $\to$ LED xanh chớp 1 nhịp.<br>- **Ấn 2 lần (Double Click):** Tua lùi 10 giây (`SEEK -10s` - `SeekCmd=0x06, Step=10`) $\to$ LED xanh chớp 2 nhịp nhanh.<br>🛡️ **Rào chắn chống spam:** Khóa tức thì sau cú bấm thứ 2, bỏ qua hoàn toàn các cú bấm thứ 3, 4! |
+| **Nút 1: PLAY / PAUSE** | `PE4` *(và đồng bộ nút `PA0` Onboard)* | Active LOW (Pull-up nội) *(PA0: Active HIGH)* | **Ấn 1 lần để đảo trạng thái phát:**<br>- Nếu đang dừng/tạm dừng $\to$ Gửi lệnh `PLAY` (`0x01`)<br>- Nếu đang phát $\to$ Gửi lệnh `PAUSE` (`0x02`)<br>*(Có khóa chống rung & cooldown 200ms)* |
+| **Nút 2: NEXT / PREVIOUS** | `PE5` | Active LOW (Pull-up nội) | **Không cần nhấn giữ - Phân biệt theo số lần bấm:**<br>- **Ấn 1 lần:** Nhảy video kế tiếp (`NEXT TRACK` - `0x03`) $\to$ LED xanh chớp 1 nhịp.<br>- **Ấn 2 lần (Double Click):** Quay lại video trước (`PREV TRACK` - `0x04`) $\to$ LED xanh chớp 2 nhịp nhanh.<br>🛡️ **Rào chắn chống spam:** Khóa tức thì sau cú bấm thứ 2, bỏ qua hoàn toàn các cú bấm thứ 3, 4! |
+| **Nút 3: TUA +10S / -10S** | `PE6` | Active LOW (Pull-up nội) | **Không cần nhấn giữ - Phân biệt theo số lần bấm:**<br>- **Ấn 1 lần:** Tua tiến 10 giây (`SEEK +10s` - `SeekCmd=0x05, Step=10`) $\to$ LED xanh chớp 1 nhịp.<br>- **Ấn 2 lần (Double Click):** Tua lùi 10 giây (`SEEK -10s` - `SeekCmd=0x06, Step=10`) $\to$ LED xanh chớp 2 nhịp nhanh.<br>🛡️ **Rào chắn chống spam:** Khóa tức thì sau cú bấm thứ 2, bỏ qua hoàn toàn các cú bấm thứ 3, 4! |
 
 ---
 
@@ -292,13 +292,16 @@ Trên hình ảnh chip vi điều khiển bên phải, click chuột trái vào 
    - Click chân **`PD14`** $\to$ Chọn **`GPIO_Output`** (User Label: `LED_RED`).
    - Click chân **`PD15`** $\to$ Chọn **`GPIO_Output`** (User Label: `LED_BLUE`).
 2. **Cụm 3 Nút Bấm Điều Khiển (Input Pull-Up):**
+   > [!IMPORTANT]
+   > **Lưu ý phần cứng đặc biệt trên STM32F4 Discovery:**
+   > Các chân `PE0` và `PE1` bị nối ngầm vào chân ngắt `INT1`, `INT2` của cảm biến gia tốc LIS3DSH có sẵn trên mạch. Do đó, chúng ta sử dụng các chân tự do hoàn toàn **`PE4`**, **`PE5`**, **`PE6`** (nằm liền kề trên Header P2) để tránh bị cảm biến ghì mức 0V!
    - Click chân **`PA0`** $\to$ Chọn **`GPIO_Input`** (User Label: `BTN_USER`).
-   - Click chân **`PE0`** $\to$ Chọn **`GPIO_Input`** (User Label: `BTN_PLAY_PAUSE`).
-   - Click chân **`PE1`** $\to$ Chọn **`GPIO_Input`** (User Label: `BTN_NEXT_PREV`).
-   - Click chân **`PE2`** $\to$ Chọn **`GPIO_Input`** (User Label: `BTN_SEEK`).
+   - Click chân **`PE4`** $\to$ Chọn **`GPIO_Input`** (User Label: `BTN_PLAY_PAUSE`).
+   - Click chân **`PE5`** $\to$ Chọn **`GPIO_Input`** (User Label: `BTN_NEXT_PREV`).
+   - Click chân **`PE6`** $\to$ Chọn **`GPIO_Input`** (User Label: `BTN_SEEK`).
 3. **Bật trở kéo lên nội (Pull-up) cho 3 nút:**
    - Vào lại mục **System Core** bên trái $\to$ Click chọn **`GPIO`**:
-   - Trong bảng danh sách, chọn lần lượt 3 dòng `PE0`, `PE1`, `PE2`:
+   - Trong bảng danh sách, chọn lần lượt 3 dòng `PE4`, `PE5`, `PE6`:
    - Ở cột **GPIO Pull-up/Pull-down**, đổi từ `No pull-up and no pull-down` thành **`Pull-up`**.
 
 ---
@@ -432,19 +435,20 @@ Sau khi CubeMX sinh code xong, bạn copy các file mã nguồn logic từ thư 
 ### Bước 0: Kích Hoạt Phần Cứng MCP2515 Trên Raspberry Pi (`config.txt`)
 Trước khi có thể mở giao diện `can0`, kernel Linux trên Raspberry Pi cần được nạp Device Tree Overlay cho chip MCP2515:
 
-1. **Nếu bạn đang dùng thẻ nhớ chạy sẵn:** Mở file cấu hình boot qua SSH:
+1. **Nếu bạn đang dùng thẻ nhớ chạy sẵn:** Trên console của Pi (chạy Yocto), sửa cấu hình boot bằng lệnh `sed` (hoặc dùng trình soạn thảo `vi`):
    ```bash
-   sudo nano /boot/config.txt
-   # (Hoặc /boot/firmware/config.txt tùy phiên bản OS)
+   # Cách 1: Tự động ghi cấu hình bằng lệnh sed (nhanh nhất)
+   sed -i 's/dtoverlay=mcp2515-can0.*/dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25,spimaxfrequency=1000000/' /boot/config.txt
+   
+   # Hoặc nếu chưa có dòng này, thêm thủ công bằng vi (/boot/config.txt):
+   # dtparam=spi=on
+   # dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25,spimaxfrequency=1000000
    ```
-   Thêm 3 dòng sau vào cuối file rồi lưu lại (`Ctrl + O`, `Enter`, `Ctrl + X`):
-   ```ini
-   dtparam=spi=on
-   dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25
-   spimaxfrequency=10000000
-   ```
+   > [!TIP]
+   > **Tại sao cần `spimaxfrequency=1000000` (1 MHz)?**
+   > Khi dùng dây cắm jumper nối từ Header Pi sang module MCP2515, dây dài gây suy hao xung clock SPI 10MHz mặc định $\to$ gây lỗi timeout `err=110` (*didn't enter in conf mode*). Hạ xuống 1MHz giúp đường truyền SPI ổn định tuyệt đối!
    *(Lưu ý: Nếu thạch anh trên module MCP2515 ghi số `16.000` thì đổi thành `oscillator=16000000`).*
-   Sau đó khởi động lại Pi: `sudo reboot`.
+   Sau đó khởi động lại Pi: `reboot`.
 
 2. **Nếu build bản OS mới bằng Yocto:**
    Hệ thống Yocto trong thư mục [Yocto/meta-usb-video-player/recipes-bsp/bootfiles/rpi-config_git.bbappend](../Yocto/meta-usb-video-player/recipes-bsp/bootfiles/rpi-config_git.bbappend) đã được cấu hình sẵn `CAN_OSCILLATOR = "8000000"` và `ENABLE_CAN = "1"`, image sinh ra sẽ tự động kích hoạt CAN!
@@ -479,7 +483,7 @@ candump -tz can0
 
 Bây giờ hãy thử nghiệm ấn từng nút trên cụm 3 nút:
 
-1. **Thử Nút 1 (PE0 hoặc PA0 Onboard) - Lệnh PLAY / PAUSE:**
+1. **Thử Nút 1 (PE4 hoặc PA0 Onboard) - Lệnh PLAY / PAUSE:**
    - Đèn LED Cam (LD3) bật sáng khi ấn giữ nút.
    - Khi nhả nút, LED Xanh lá (LD4) chớp nháy xác nhận gửi thành công.
    - **Ấn lần 1 (Gửi PLAY):**
@@ -493,7 +497,7 @@ Bây giờ hãy thử nghiệm ấn từng nút trên cụm 3 nút:
      ```
      *(Giải thích: Cmd=0x02 (PAUSE), Counter=0x02, Checksum = (2+0+0+2) = 0x04).*
 
-2. **Thử Nút 2 (PE1) - Lệnh NEXT / PREVIOUS (Ấn 1 lần / Ấn 2 lần):**
+2. **Thử Nút 2 (PE5) - Lệnh NEXT / PREVIOUS (Ấn 1 lần / Ấn 2 lần):**
    - **Ấn 1 lần:** Sau 350ms xác nhận cú ấn đơn $\to$ Gửi NEXT TRACK (`0x03`), LED xanh chớp 1 nhịp:
      ```text
      (002.810140) can0 100 [8] 03 00 00 03 06 00 00 00
@@ -504,7 +508,7 @@ Bây giờ hãy thử nghiệm ấn từng nút trên cụm 3 nút:
      ```
    - 🛡️ **Kiểm tra chống spam:** Thử bấm liên tục 3, 4 lần nhanh $\to$ Hệ thống chỉ nhận đúng lệnh Double Click ở 2 cú bấm đầu, toàn bộ các cú bấm thứ 3, 4 tiếp theo bị hủy hoàn toàn!
 
-3. **Thử Nút 3 (PE2) - Lệnh TUA +10S / -10S (Ấn 1 lần / Ấn 2 lần):**
+3. **Thử Nút 3 (PE6) - Lệnh TUA +10S / -10S (Ấn 1 lần / Ấn 2 lần):**
    - **Ấn 1 lần:** Sau 350ms xác nhận cú ấn đơn $\to$ Gửi TUA TIẾN +10S (`SeekCmd=0x05, Step=10`), LED xanh chớp 1 nhịp:
      ```text
      (005.520410) can0 100 [8] 00 05 0A 05 14 00 00 00
@@ -547,6 +551,9 @@ systemctl start can-daemon
 
 | Hiện tượng | Nguyên nhân chính | Cách xử lý dứt điểm |
 | :--- | :--- | :--- |
+| **LED Cam (LD3) sáng liên tục dù đã rút hết nút bấm** | Chân `PE0`, `PE1` trên kit Discovery bị nối ngầm vào chân ngắt `INT1`, `INT2` của cảm biến gia tốc MEMS LIS3DSH (kéo chân xuống 0V) | **Bắt buộc dùng cụm chân tự do `PE4`, `PE5`, `PE6`** (Header P2 Pin 7, 8, 9) và bật trở kéo lên nội `Pull-up` trong STM32CubeMX! |
+| **Pi báo `didn't enter in conf mode after reset (err=110)`** | Tần số xung SPI mặc định (10MHz) quá cao gây suy hao tín hiệu trên dây cắm jumper dài | Thêm `spimaxfrequency=1000000` (1 MHz) vào dòng overlay trong `/boot/config.txt`. |
+| **Pi báo `can state ERROR-PASSIVE`** | Mức điện áp vi sai CAN bị trôi do thiếu mass đất hoặc thiếu trở | 1. **Bắt buộc nối 1 dây GND giữa STM32 và Raspberry Pi**<br>2. Đóng jumper 120Ω trên cả module VP1050 và MCP2515<br>3. Đảm bảo VP1050 được cấp nguồn **5V**. |
 | **LED Đỏ (LD5) sáng liên tục khi vừa bật nguồn hoặc vừa ấn nút** | 1. Chưa nối chung mass đất (**Common Ground**)<br>2. Thiếu trở kết thúc 120Ω<br>3. Đảo ngược dây CAN_H và CAN_L | 1. Cắm 1 dây từ `GND STM32` sang `GND Raspberry Pi`<br>2. Đóng jumper 120Ω trên cả 2 đầu module<br>3. Kiểm tra nối đúng CAN_H sang CAN_H, CAN_L sang CAN_L |
 | **`candump can0` không nhận được bất kỳ frame nào** | 1. Sai bitrate (Pi chạy 250k hoặc 1M thay vì 500k)<br>2. Module MCP2515 dùng thạch anh khác (16MHz thay vì 8MHz)<br>3. Chân PB8/PB9 chưa được cắm chắc | 1. Chạy lại `ip link set can0 up type can bitrate 500000`<br>2. Kiểm tra file cấu hình overlay `config.txt` trên Pi (`dtoverlay=mcp2515-can0,oscillator=...`) |
 | **Pi báo `Checksum mismatch! Dropping frame`** | Thuật toán Checksum bị sai lệch | Mã nguồn STM32 này đã sử dụng đúng công thức: `(Byte0 + Byte1 + Byte2 + Byte3) & 0xFF`, hoàn toàn tương thích với file `Constants.h` của Pi |

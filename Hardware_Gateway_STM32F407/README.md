@@ -34,7 +34,7 @@ Hardware_Gateway_STM32F407/
 │   ├── button_manager.h           # Máy trạng thái FSM 5 trạng thái (Single/Double click, chống spam lần 3, 4)
 │   ├── can_driver.h               # Giao diện điều khiển ngoại vi bxCAN (Init, Filter Bank, TX, RX)
 │   ├── can_protocol.h             # Cấu trúc CAN frame ID 0x100, 0x101, Checksum và Rolling Counter
-│   ├── config.h                   # Cấu hình GPIO (PB8/PB9, PE0..PE2), Bit Timing 500k, ngưỡng thời gian FSM
+│   ├── config.h                   # Cấu hình GPIO (PB8/PB9, PE4..PE6), Bit Timing 500k, ngưỡng thời gian FSM
 │   ├── led_indicator.h            # Giao diện điều khiển LED trạng thái (TX pulse, hold, error, play state)
 │   ├── main.h                     # Header hệ thống
 │   ├── stm32f4xx_hal_conf.h       # Cấu hình thư viện STM32 HAL
@@ -53,13 +53,13 @@ Hardware_Gateway_STM32F407/
 ## 3. Hoạt Động Của Nút Bấm & Cụm Đèn LED
 
 ### 3.1. Cụm 3 Nút Bấm Điều Khiển (Single & Double Click)
-- **Nút 1 (`PE0` / hoặc `PA0` Onboard): PLAY / PAUSE**
+- **Nút 1 (`PE4` / hoặc `PA0` Onboard): PLAY / PAUSE**
   - **Ấn 1 lần:** Đảo trạng thái giữa `PLAY (0x01)` $\longleftrightarrow$ `PAUSE (0x02)`.
-- **Nút 2 (`PE1`): NEXT / PREVIOUS**
+- **Nút 2 (`PE5`): NEXT / PREVIOUS**
   - **Ấn 1 lần:** Chuyển sang bài kế tiếp (`NEXT TRACK - 0x03`) $\to$ LED xanh lá chớp 1 nhịp.
   - **Ấn 2 lần (Double Click):** Quay lại bài trước (`PREVIOUS TRACK - 0x04`) $\to$ LED xanh lá chớp 2 nhịp nhanh.
   - 🛡️ **Khóa chống spam:** Tự động khóa và bỏ qua hoàn toàn các cú bấm dồn dập thứ 3, 4!
-- **Nút 3 (`PE2`): TUA +10S / -10S**
+- **Nút 3 (`PE6`): TUA +10S / -10S**
   - **Ấn 1 lần:** Tua tiến 10 giây (`SEEK +10s` - `SeekCmd=0x05, Step=10`) $\to$ LED xanh lá chớp 1 nhịp.
   - **Ấn 2 lần (Double Click):** Tua lùi 10 giây (`SEEK -10s` - `SeekCmd=0x06, Step=10`) $\to$ LED xanh lá chớp 2 nhịp nhanh.
   - 🛡️ **Khóa chống spam:** Tự động khóa và bỏ qua hoàn toàn các cú bấm dồn dập thứ 3, 4!

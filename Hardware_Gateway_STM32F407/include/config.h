@@ -79,12 +79,16 @@ extern "C" {
 #define BTN_USER_ACTIVE_STATE   GPIO_PIN_SET    /* Active HIGH */
 #define BTN_USER_CLK_ENABLE()   __HAL_RCC_GPIOA_CLK_ENABLE()
 
-/* Cụm 3 nút cứng ngoại vi (Port E - Active LOW với Pull-up nội) */
+/* Cụm 3 nút cứng ngoại vi (Port E - Active LOW với Pull-up nội)
+ * LƯU Ý PHẦN CỨNG STM32F4DISCOVERY:
+ * PE0 nối ngầm MEMS_INT1, PE1 nối MEMS_INT2, PE2/PE3 nối MEMS_CS của cảm biến gia tốc LIS3DSH.
+ * Do đó BẮT BUỘC dùng cụm chân tự do (Free I/O) PE4, PE5, PE6 để không bị ghì mức 0V!
+ */
 #define BTN_CLUSTER_PORT        GPIOE
 #define BTN_CLUSTER_CLK_ENABLE() __HAL_RCC_GPIOE_CLK_ENABLE()
-#define BTN_PIN_PLAY_PAUSE      GPIO_PIN_0      /* Nút 1: Play / Pause */
-#define BTN_PIN_NEXT_PREV       GPIO_PIN_1      /* Nút 2: Next (1 lần) / Prev (2 lần) */
-#define BTN_PIN_SEEK            GPIO_PIN_2      /* Nút 3: +10s (1 lần) / -10s (2 lần) */
+#define BTN_PIN_PLAY_PAUSE      GPIO_PIN_4      /* Nút 1: Play / Pause (Chân PE4 - Header P2 Pin 7) */
+#define BTN_PIN_NEXT_PREV       GPIO_PIN_5      /* Nút 2: Next / Prev (Chân PE5 - Header P2 Pin 8) */
+#define BTN_PIN_SEEK            GPIO_PIN_6      /* Nút 3: Tua +10s / -10s (Chân PE6 - Header P2 Pin 9) */
 
 /* Tham số thời gian máy trạng thái nút bấm (FSM Timings) */
 #define BUTTON_DEBOUNCE_MS          50          /* Lọc rung phím cơ học: 50ms */

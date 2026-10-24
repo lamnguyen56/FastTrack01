@@ -79,29 +79,27 @@ Dự án Yocto đã có đầy đủ cấu hình driver và daemon:
 
 Nếu bạn **đã có sẵn thẻ nhớ SD** đang chạy trên Raspberry Pi và muốn kiểm tra ngay:
 
-### Bước 1: Kiểm tra file `config.txt`
-Trên Raspberry Pi qua SSH hoặc màn hình console, mở file cấu hình boot:
+### Bước 1: Kiểm tra & cập nhật file `config.txt`
+Trên Raspberry Pi (chạy Yocto), bạn có thể dùng lệnh `sed` để sửa nhanh (hoặc dùng trình soạn thảo `vi /boot/config.txt` vì Yocto minimal không cài sẵn `nano`):
 ```bash
-sudo nano /boot/config.txt
-# (Hoặc /boot/firmware/config.txt tùy phiên bản mount)
+# Tự động cập nhật hoặc thêm cấu hình chuẩn cho MCP2515:
+sed -i 's/dtoverlay=mcp2515-can0.*/dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25,spimaxfrequency=1000000/' /boot/config.txt
 ```
 
-Đảm bảo có đủ 3 dòng sau ở cuối file:
+Đảm bảo file `/boot/config.txt` có các dòng sau:
 ```ini
 dtparam=spi=on
-dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25
-spimaxfrequency=10000000
+dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25,spimaxfrequency=1000000
 ```
 > [!IMPORTANT]
-> **Kiểm tra thạch anh trên module MCP2515 của bạn:**
-> - Nhìn vào con thạch anh bằng kim loại màu bạc trên module MCP2515:
->   - Nếu ghi số **`8.000`** hoặc **`8MHz`** $\implies$ để `oscillator=8000000`.
->   - Nếu ghi số **`16.000`** hoặc **`16MHz`** $\implies$ sửa thành `oscillator=16000000`.
-> - Nếu sai tần số thạch anh, kernel sẽ tính sai baud rate dẫn đến không truyền/nhận được!
+> - **Tần số thạch anh (`oscillator`):** Nhìn vào con thạch anh kim loại màu bạc trên module MCP2515:
+>   - Nếu ghi **`8.000`** $\implies$ để `oscillator=8000000`.
+>   - Nếu ghi **`16.000`** $\implies$ sửa thành `oscillator=16000000`.
+> - **Hạ xung SPI (`spimaxfrequency=1000000`):** Khi dùng dây cắm jumper dài, xung 10MHz mặc định rất dễ bị méo tín hiệu gây lỗi `Probe failed, err=110` (*didn't enter in conf mode*). Bắt buộc hạ xuống 1MHz (1000000) để đảm bảo giao tiếp SPI ổn định tuyệt đối!
 
 ### Bước 2: Khởi động lại Raspberry Pi
 ```bash
-sudo reboot
+reboot
 ```
 
 ---
@@ -148,12 +146,12 @@ Chạy công cụ nghe bus CAN trên terminal Pi:
 candump -tz can0
 ```
 Bây giờ hãy nhấn các nút trên bo mạch STM32:
-1. **Ấn Nút 1 (PE0 hoặc PA0 Onboard - PLAY / PAUSE):**
+1. **Ấn Nút 1 (PE4 hoặc PA0 Onboard - PLAY / PAUSE):**
    ```text
    (000.000000) can0 100 [8] 01 00 00 01 02 00 00 00   <-- Lệnh PLAY (0x01)
    (001.420100) can0 100 [8] 02 00 00 02 04 00 00 00   <-- Lệnh PAUSE (0x02)
    ```
-2. **Ấn Nút 2 (PE1 - NEXT / PREV):**
+2. **Ấn Nút 2 (PE5 - NEXT / PREV):**
    - Ấn 1 lần:
      ```text
      (003.110200) can0 100 [8] 03 00 00 03 06 00 00 00   <-- Lệnh NEXT (0x03)
@@ -162,7 +160,7 @@ Bây giờ hãy nhấn các nút trên bo mạch STM32:
      ```text
      (004.850400) can0 100 [8] 04 00 00 04 08 00 00 00   <-- Lệnh PREV (0x04)
      ```
-3. **Ấn Nút 3 (PE2 - TUA +10S / -10S):**
+3. **Ấn Nút 3 (PE6 - TUA +10S / -10S):**
    - Ấn 1 lần:
      ```text
      (006.200300) can0 100 [8] 00 05 0A 05 14 00 00 00   <-- Lệnh TUA +10S (0x05, step 10)
@@ -217,7 +215,8 @@ Dịch vụ `can-daemon` có nhiệm vụ làm cầu nối chuyển đổi các 
 | Hiện tượng | Nguyên nhân | Cách xử lý dứt điểm |
 | :--- | :--- | :--- |
 | **`Cannot find device "can0"`** | Chưa tải overlay MCP2515 hoặc lỗi kết nối chân SPI | 1. Kiểm tra lại `/boot/config.txt` đã có `dtoverlay=mcp2515-can0...`<br>2. Kiểm tra dây SPI: CS (Pin 24), MOSI (Pin 19), MISO (Pin 21), SCK (Pin 23), INT (Pin 22/GPIO25). |
-| **`mcp251x spi0.0: probe failed` trong dmesg** | Sai chân ngắt (INT) hoặc nguồn cấp 5V chưa đủ | 1. Kiểm tra chân `INT` của module có cắm vào **Pin 22** (GPIO25) của Pi không.<br>2. Đo điện áp chân VCC của module MCP2515 đủ 5V không. |
+| **`MCP251x didn't enter in conf mode after reset (err=110)`** | Tần số xung SPI mặc định (10MHz) quá cao gây suy hao tín hiệu trên dây cắm jumper dài | Thêm `spimaxfrequency=1000000` (1 MHz) vào dòng overlay trong `/boot/config.txt`. |
+| **`Cannot initialize MCP2515. Wrong wiring? (err=19)`** | Lệch mức điện áp logic hoặc dây MISO/MOSI bị đảo chéo | 1. Thử cấp nguồn VCC từ chân 3.3V (Pin 1) hoặc kiểm tra lại mức điện áp.<br>2. Đảm bảo SI vào Pin 19, SO vào Pin 21 (không đảo chéo). |
 | **`can state ERROR-PASSIVE` hoặc `BUS-OFF`** | 1. Chưa có dây Mass chung (GND)<br>2. Thiếu trở kết thúc 120Ω<br>3. Ngược dây CAN_H và CAN_L | 1. Nối 1 dây giữa chân `GND` STM32 và `GND` Raspberry Pi.<br>2. Đóng jumper 120Ω trên cả 2 module.<br>3. Đo điện trở giữa CAN_H và CAN_L khi tắt nguồn: phải đạt xấp xỉ **60Ω**. |
 | **Gửi frame bị `Checksum mismatch! Dropping frame`** | Sai thuật toán Checksum | Mã nguồn STM32 và can-daemon đều sử dụng chung công thức: `(B0 + B1 + B2 + B3) & 0xFF`. |
 | **candump không nhận được tin, nhưng đèn STM32 nháy xanh** | Sai bitrate do sai tần số thạch anh MCP2515 | Kiểm tra con thạch anh trên module MCP2515. Nếu là 16MHz mà cấu hình 8MHz (hoặc ngược lại) thì bitrate thực tế sẽ bị lệch gấp đôi (250k hoặc 1M thay vì 500k). Sửa lại `oscillator=16000000` hoặc `8000000` trong `config.txt`. |
