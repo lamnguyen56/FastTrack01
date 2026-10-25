@@ -1,0 +1,37 @@
+flowchart TB
+    STM["STM32F4 + buttons + CAN transceiver"]
+    USB["FAT32 USB drive"]
+    DISPLAY["Display / audio output"]
+    subgraph PI["Raspberry Pi 3B"]
+        subgraph KERNEL["Kernel / BSP"]
+            CAN["MCP2515 CAN HAT / SPI / SocketCAN can0"]
+            STORAGE["USB storage / VFAT"]
+            DRM["VC4 / DRM / KMS"]
+        end
+        subgraph PLATFORM["Platform processes"]
+            DAEMON["can-daemon"]
+            MONITOR["usb-monitor"]
+        end
+        subgraph APP["usb-video-player process"]
+            IPC["CanIpcClient"]
+            READER["UsbPlaylistReader / UsbPlaylistModel"]
+            CONTROL["PlayerController"]
+            UI["QML UI / Qt Multimedia"]
+        end
+        PLAYLIST["/tmp/usb_playlist.txt"]
+    end
+    STM -->|"CAN 0x100"| CAN
+    CAN --> DAEMON
+    DAEMON -->|"Unix datagram command"| IPC
+    IPC --> CONTROL
+    USB --> STORAGE
+    STORAGE --> MONITOR
+    MONITOR -->|"Atomic playlist"| PLAYLIST
+    PLAYLIST --> READER
+    READER --> CONTROL
+    READER --> UI
+    CONTROL <--> UI
+    UI --> DRM
+    DRM --> DISPLAY
+    IPC -. "Status when the application calls sendStatus" .-> DAEMON
+    DAEMON -. "CAN 0x101" .-> STM

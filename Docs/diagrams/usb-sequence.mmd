@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant USB as USB / kernel
+    participant Service as usb-monitor
+    participant File as Playlist file
+    participant Reader as UsbPlaylistReader
+    participant Player as PlayerController / QML
+    USB->>Service: Block-device event through udev
+    Service->>Service: Mount FAT32 read-only at /media/usb0
+    Service->>Service: Scan media files
+    Service->>File: Publish playlist using atomic replacement
+    Reader->>File: Read on watch notification or fallback poll
+    Reader->>Reader: Validate mount and paths
+    Reader->>Player: Update model, select first item
+    Note over Reader,Player: Default selection does not request playback
+    Player->>USB: Read media after a Play request
+    par Service cleanup on removal
+        USB->>Service: Active USB removed
+        Service->>Service: Cancel scan
+        Service->>File: Clear playlist
+        Service->>Service: Release mount and active session
+    and Independent application mount check
+        Reader->>Reader: Detect mount loss
+        Reader->>Player: Signal disconnect, clear model
+        Player->>Player: Stop playback and update UI
+    end

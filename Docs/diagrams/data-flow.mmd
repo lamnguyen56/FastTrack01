@@ -1,0 +1,34 @@
+flowchart LR
+    STM["External input: STM32F4 buttons"]
+    USER["External input: UI actions"]
+    USB[("FAT32 USB: media files")]
+    PLAYLIST[("/tmp/usb_playlist.txt: UTF-8 paths")]
+    MODEL[("Application playlist model")]
+    SCAN["Mount and scan: usb-monitor"]
+    BRIDGE["CAN decode and IPC: can-daemon"]
+    RECEIVE["Receive command and validate checksum: CanIpcClient"]
+    READ["Read and validate snapshot: UsbPlaylistReader"]
+    CONTROL["Selection and transport: PlayerController"]
+    MEDIA["Decode and playback: Qt Multimedia"]
+    VIEW["QML UI"]
+    OUTPUT["Display / audio output"]
+    USB -->|"Filesystem entries"| SCAN
+    SCAN -->|"Atomic path snapshot"| PLAYLIST
+    PLAYLIST -->|"Absolute paths"| READ
+    READ -->|"Validated file list"| MODEL
+    READ -->|"Mounted / disconnected"| VIEW
+    MODEL -->|"List and count"| VIEW
+    MODEL -->|"playlistChanged"| CONTROL
+    STM -->|"CAN ID 0x100"| BRIDGE
+    BRIDGE -->|"CanCommandPacket / Unix datagram"| RECEIVE
+    RECEIVE -->|"Qt transport signals"| CONTROL
+    USER -->|"Click / touch"| VIEW
+    VIEW -->|"Play / Pause / Next / Previous / Seek"| CONTROL
+    CONTROL -->|"Source URL / transport requests"| MEDIA
+    USB -->|"Video / audio data"| MEDIA
+    MEDIA -->|"Position / duration / state / errors"| CONTROL
+    CONTROL -->|"Qt properties / signals"| VIEW
+    MEDIA -->|"Decoded video / audio"| OUTPUT
+    VIEW -->|"Layout and controls"| OUTPUT
+    RECEIVE -. "CanStatusPacket when the application calls sendStatus" .-> BRIDGE
+    BRIDGE -. "CAN ID 0x101" .-> STM

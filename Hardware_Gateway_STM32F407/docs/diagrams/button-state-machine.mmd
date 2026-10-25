@@ -1,0 +1,16 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> FirstPressed: Debounced press
+    FirstPressed --> WaitingSecond: Release after hold shorter than 500 ms
+    FirstPressed --> Lockout: Release after hold at least 500 ms / single action
+    WaitingSecond --> SecondPressed: Debounced second press / double action
+    WaitingSecond --> Lockout: 350 ms elapsed without second press / single action
+    SecondPressed --> Lockout: Debounced release
+    Lockout --> Idle: Released for 200 ms
+    Lockout --> Lockout: Pressed / refresh cooldown, ignore action
+    note right of Idle
+        Separate FSMs for PE5 and PE6.
+        Input debounce is 50 ms.
+        PE4 and PA0 use press-edge handling,
+        not this multi-click FSM.
+    end note

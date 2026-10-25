@@ -1,0 +1,26 @@
+stateDiagram-v2
+    state "Waiting for eligible USB" as Waiting
+    state "Mounting" as Mounting
+    state "Active USB session" as Active
+    state "Scanning" as Scanning
+    state "Playlist published" as Published
+    state "Scan failed, empty playlist" as ScanError
+    state "Releasing session" as Releasing
+    [*] --> Waiting
+    Waiting --> Mounting: Add or enumerate eligible partition, scanner idle
+    Waiting --> Waiting: Ignore ineligible devices or wait for the old scanner
+    Mounting --> Waiting: Mount failed
+    Mounting --> Active: Mount succeeded and scanner started
+    Mounting --> Releasing: Scanner could not start
+    state Active {
+        [*] --> Scanning
+        Scanning --> Published: Valid result, publish even an empty list
+        Scanning --> ScanError: Scan failed, clear playlist
+    }
+    Active --> Releasing: Active USB removed or service shutdown
+    Releasing --> Waiting: Cancel scan, clear playlist, release mount, request enumeration
+    note right of Waiting
+        Only one USB session is selected.
+        Removing another device does not
+        release the active session.
+    end note

@@ -1,0 +1,39 @@
+stateDiagram-v2
+    state "No media" as NoMedia
+    state "Reset media session" as Resetting
+    state "Current media session" as Session
+    state "Loading" as Loading
+    state "Ready, not playing" as Ready
+    state "Playing" as Playing
+    state "Paused" as Paused
+    state "End of media" as Ended
+    state "Media error" as MediaError
+    [*] --> NoMedia
+    NoMedia --> Resetting: Playlist has media, select first item
+    Resetting --> Session: Nonempty source, create session via Qt.callLater
+    Resetting --> NoMedia: Empty source
+    state Session {
+        [*] --> Loading
+        Loading --> Ready: Media ready, no pending Play
+        Loading --> Playing: Media ready, pending Play, backend confirms Playing
+        Ready --> Playing: Play, backend confirms Playing
+        Playing --> Paused: Pause, backend confirms Paused
+        Paused --> Playing: Play, backend confirms Playing
+        Playing --> Ended: EOS handled after the current callback
+        Ended --> Playing: Auto Next off, Play requests seek to zero and replay
+        Loading --> MediaError: Media rejected
+        Ready --> MediaError: Backend error
+        Playing --> MediaError: Backend error
+        Paused --> MediaError: Backend error
+    }
+    Session --> Resetting: Track selection or Next / Previous
+    Ended --> Resetting: Auto Next on, select next track and request Play
+    Session --> NoMedia: Mount lost or playlist has no media
+    note right of Ended
+        Auto Next off retains the session and final frame.
+        Auto Next on advances with playlist wraparound.
+    end note
+    note right of Resetting
+        Stop the old source before creating a new session.
+        Generation checks reject obsolete callbacks.
+    end note

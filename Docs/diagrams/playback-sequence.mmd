@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    participant User as UI / CAN command
+    participant Control as PlayerController
+    participant Life as MediaSessionLifecycle
+    participant Gate as PlaybackCoordinator
+    participant Media as MediaPlayer / VideoOutput
+    Note over User,Media: Logical ordering on main, not a measured time scale
+    User->>Control: Next / Previous / select another track
+    Control->>Gate: stopRequested, cancel pending Play
+    Control->>Life: stopRequested, reset generation
+    Life->>Media: Stop, clear source, release session
+    Control->>Life: sourceChanged, update desiredSource and reset generation
+    Control->>Gate: playRequested, record pending Play and current source
+    Note over Life,Gate: Qt.callLater runs after the current callback, not after a fixed delay
+    Note over Gate: Pause / Stop / source replacement cancels pending Play and invalidates old tickets
+    Life->>Life: Reject obsolete generation tickets
+    Life->>Media: Create session, attach VideoOutput, then assign source
+    Media-->>Gate: Ready when media reaches a supported state
+    Gate->>Gate: Qt.callLater, recheck generation and source
+    Gate->>Media: Play
+    Media-->>Gate: Playing, clear pending Play
+    Media-->>Control: Report playback, position and duration
+    Media-->>Gate: EndOfMedia
+    Gate->>Gate: Qt.callLater, confirm the source is still current
+    Gate->>Control: handleEndOfMedia
+    alt Auto Next enabled
+        Control->>Control: Select next track and repeat source-switch sequence
+    else Auto Next disabled
+        Control->>Control: Set finished, retain session and final frame
+    end

@@ -1,0 +1,53 @@
+flowchart TB
+    BOOT(["Pi boot"])
+    KERNEL["Kernel loads USB / CAN / display drivers"]
+    SYSTEMD["systemd starts services according to dependencies"]
+    BOOT --> KERNEL --> SYSTEMD
+    subgraph USB["usb-monitor.service"]
+        UINIT{"udev initialization successful?"}
+        UENUM["Clear old publication, enumerate connected USB devices"]
+        UWAIT["Wait for USB events / scan results"]
+        UEVENT{"USB event received?"}
+        UHANDLE["Add: select, mount and scan. Remove: release matching session"]
+        UPUBLISH["Check scan result, publish or clear playlist"]
+        URETRY["Service failed: restart after 2 s"]
+        UINIT -->|"Yes"| UENUM --> UWAIT --> UEVENT
+        UINIT -->|"No"| URETRY --> UINIT
+        UEVENT -->|"Yes"| UHANDLE --> UWAIT
+        UEVENT -->|"Wait timeout"| UPUBLISH --> UWAIT
+        UWAIT -->|"udev error"| URETRY
+    end
+    subgraph CAN["can-daemon.service"]
+        CWAIT{"can0 found before wait timeout?"}
+        CSETUP["setup_can.sh: bitrate / restart-ms / UP"]
+        COPEN{"CAN and IPC sockets opened?"}
+        CLOOP["CAN commands to IPC, IPC status to CAN"]
+        CRETRY["Service failed: restart after 5 s"]
+        CWAIT -->|"Yes"| CSETUP --> COPEN
+        CWAIT -->|"No"| CRETRY --> CWAIT
+        CSETUP -->|"Interface configuration failed"| CRETRY
+        COPEN -->|"Yes"| CLOOP
+        COPEN -->|"No"| CRETRY
+        CLOOP --> CLOOP
+    end
+    subgraph APP["usb-video-player.service"]
+        DISPLAY{"Display ready before wait timeout?"}
+        AINIT["Initialize Qt, CAN client, model and controller"]
+        ALOAD{"QML loaded successfully?"}
+        AWAIT["Display UI and process Qt events"]
+        AEVENT{"Application event"}
+        AUSB["Mount / playlist: update model and selection"]
+        ACMD["UI / CAN: coordinate playback"]
+        ASTATE["Media callback: update timeline / EOS / errors"]
+        ARETRY["Service failed: restart after 3 s"]
+        DISPLAY -->|"Yes"| AINIT --> ALOAD
+        DISPLAY -->|"No"| ARETRY --> DISPLAY
+        ALOAD -->|"Yes"| AWAIT --> AEVENT
+        ALOAD -->|"No"| ARETRY
+        AEVENT -->|"USB"| AUSB --> AWAIT
+        AEVENT -->|"Command"| ACMD --> AWAIT
+        AEVENT -->|"Playback"| ASTATE --> AWAIT
+    end
+    SYSTEMD --> UINIT
+    SYSTEMD --> CWAIT
+    SYSTEMD --> DISPLAY

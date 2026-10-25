@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant STM as STM32F4 buttons
+    participant CAN as SocketCAN can0
+    participant Bridge as can-daemon
+    participant IPC as CanIpcClient
+    participant Control as PlayerController
+    participant UI as Qt Multimedia / QML
+    STM->>CAN: Command frame 0x100
+    CAN->>Bridge: Read raw CAN socket
+    Bridge->>Bridge: Check CAN ID/DLC and decode packet
+    Bridge->>IPC: Unix datagram to /tmp/qt_app_ipc.sock
+    IPC->>IPC: Validate checksum
+    alt Valid checksum
+        IPC->>Control: Play / Pause / Next / Previous / Seek
+        Control->>UI: Request playback action
+        UI->>Control: Actual state and timeline
+    else Invalid checksum
+        IPC->>IPC: Drop packet and log warning
+    end
+    opt Application calls sendStatus - no automatic timer is connected
+        IPC->>Bridge: Status to /tmp/can_ipc.sock
+        Bridge->>CAN: Encode 0x101, big-endian time fields
+        CAN->>STM: Status frame
+    end

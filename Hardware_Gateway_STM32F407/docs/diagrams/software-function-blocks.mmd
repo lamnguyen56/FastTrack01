@@ -1,0 +1,14 @@
+flowchart LR
+    INPUT["PE4 / PA0, PE5, PE6"] --> BUTTON["button_manager: debounce and click FSMs"]
+    BUTTON -->|"Command callback"| MAIN["main: command/status routing"]
+    MAIN -->|"Send command"| CAN["can_driver: CAN1 HAL and mailboxes"]
+    PROTOCOL["can_protocol: pack 0x100 / unpack 0x101"] --- CAN
+    CAN <-->|"CAN TX/RX through transceiver"| PI["Pi CAN HAT / can0"]
+    IRQ["CAN1 RX0 / SCE interrupt handlers"] --> CAN
+    CAN -->|"Status callback"| MAIN
+    MAIN -->|"Received playback state"| BUTTON
+    BUTTON -->|"Button and click feedback"| LED["led_indicator"]
+    CAN -->|"Mailbox activity, errors and received playback state"| LED
+    LOOP["Superloop: button scan, LED update, 250 ms error check, 2 ms delay"] --> BUTTON
+    LOOP --> LED
+    LOOP --> CAN

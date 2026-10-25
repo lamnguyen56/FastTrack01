@@ -1,0 +1,6 @@
+flowchart LR
+    BUTTON["Buttons"] --> MCU["STM32F4 CAN controller"]
+    MCU <-->|"CAN TX/RX"| TRANS["STM32 CAN transceiver"]
+    TRANS <-->|"CANH / CANL / GND"| HAT["RS485 CAN HAT: transceiver + MCP2515"]
+    HAT <-->|"SPI0 CE0 + IRQ GPIO25"| PI["Raspberry Pi 3B"]
+    NOTE["Functional connections only. Use the verified hardware guide for STM32 pins and power. RS485 is separate from CAN."]

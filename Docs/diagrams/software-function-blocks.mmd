@@ -1,0 +1,49 @@
+flowchart LR
+    subgraph USB["usb-monitor: USB management"]
+        HOTPLUG["HotplugMonitor: udev events / enumeration"]
+        STORAGE["StorageController: USB session selection / ownership"]
+        MOUNT["MountManager: read-only mount / unmount"]
+        SCAN["MediaScanner: asynchronous media scan"]
+        WRITE["PlaylistWriter: atomic playlist publication"]
+        HOTPLUG --> STORAGE
+        STORAGE --> MOUNT
+        STORAGE --> SCAN
+        SCAN --> STORAGE
+        STORAGE --> WRITE
+    end
+    subgraph CAN["can-daemon: CAN / IPC bridge"]
+        SOCKET["SocketCan: receive / transmit frames"]
+        CODEC["ProtocolCodec: decode commands / encode status"]
+        CHANNEL["IpcChannel: Unix datagrams"]
+        SOCKET -->|"Command frame"| CODEC
+        CODEC -->|"CanCommandPacket"| CHANNEL
+        CHANNEL -->|"CanStatusPacket when available"| CODEC
+        CODEC -->|"Status frame"| SOCKET
+    end
+    subgraph APP["usb-video-player: control and HMI"]
+        READER["UsbPlaylistReader: read snapshot / check mount"]
+        MODEL["UsbPlaylistModel: UI list model"]
+        CLIENT["CanIpcClient: receive commands / validate checksum"]
+        CONTROL["PlayerController: selection / transport / Auto Next"]
+        LIFE["MediaSessionLifecycle: replace media sessions"]
+        GATE["PlaybackCoordinator: readiness / Play / EOS"]
+        POLICY["HardwareDecodePolicy: allow v4l2h264dec video only"]
+        MEDIA["Qt Multimedia: MediaPlayer / VideoOutput"]
+        QML["QML: playlist / controls / overlay / USB notice"]
+        READER --> MODEL
+        MODEL --> CONTROL
+        MODEL --> QML
+        READER -->|"Mount / disconnect state"| QML
+        CLIENT --> CONTROL
+        QML -->|"User actions"| CONTROL
+        CONTROL --> LIFE
+        CONTROL --> GATE
+        POLICY -->|"Applied before media creation"| MEDIA
+        LIFE -->|"Recreate session on source changes"| MEDIA
+        GATE <-->|"Play / readiness / EOS"| MEDIA
+        MEDIA -->|"Playback / timeline / errors"| CONTROL
+        CONTROL -->|"State bindings"| QML
+        MEDIA -->|"Video"| QML
+    end
+    WRITE -->|"/tmp/usb_playlist.txt"| READER
+    CHANNEL -->|"Command"| CLIENT
