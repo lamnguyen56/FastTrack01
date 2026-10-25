@@ -39,13 +39,13 @@ public:
     void onDevice(const Event& event);
 
     /**
-     * @brief Publish a completed scan only while its storage session remains active.
+     * @brief Collect a completed scan and check publication while its session remains active.
      */
     void poll();
 
     /**
-     * @brief Consume the request to look for another eligible device.
-     * @return Previous request value; resets the stored request to false.
+     * @brief Consume a reselection request only after the scanner job has been collected.
+     * @return False while the scanner is busy, preserving the request; otherwise consume it.
      */
     bool takeEnumerationRequest();
 

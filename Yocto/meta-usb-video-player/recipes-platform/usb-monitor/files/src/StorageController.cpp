@@ -82,20 +82,36 @@ void StorageController::poll() {
     }
 
     // A completed result from removed storage must never restore a stale playlist.
-    if (activePath_.empty() == false) {
-        if (result->valid == true) {
-            LOG_I("USB scan complete: ", result->files.size(), " media files");
-            playlist_.write(result->files);
-        } else {
-            playlist_.clear();
-            LOG_E("USB scan failed; playlist cleared");
-        }
-    } else {
+    if (activePath_.empty() == true) {
         enumerate_ = true;
+        return;
     }
+
+    if (result->valid == false) {
+        if (playlist_.clear() == true) {
+            LOG_E("USB scan failed; playlist cleared");
+        } else {
+            LOG_E("USB scan failed; cannot clear playlist");
+        }
+        return;
+    }
+
+    // Scan completion alone does not mean the UI snapshot was published.
+    if (playlist_.write(result->files) == false) {
+        LOG_E("USB scan complete, but playlist publication failed: ",
+              result->files.size(), " media files");
+        return;
+    }
+
+    LOG_I("USB scan complete; playlist published: ", result->files.size(), " media files");
 }
 
 bool StorageController::takeEnumerationRequest() {
+    // Keep the request pending until poll() consumes the old worker's result.
+    if (scanner_.busy() == true) {
+        return false;
+    }
+
     const bool value = enumerate_;
     enumerate_ = false;
 
