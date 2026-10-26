@@ -1,7 +1,8 @@
-# STM32CubeIDE local project workspace and build outputs
-STM32_CAN_Gateway/
+# Build output directories
 Debug/
 Release/
+bin/
+obj/
 
 # Compiled object and binary files
 *.o
@@ -11,9 +12,10 @@ Release/
 *.bin
 *.hex
 *.map
-*.launch
+*.list
 
-# Eclipse / STM32CubeIDE project metadata
+# Eclipse / STM32CubeIDE workspace metadata and runtime logs
 .metadata/
-.settings/
 *.log
+*.lock
+*.lock_info
