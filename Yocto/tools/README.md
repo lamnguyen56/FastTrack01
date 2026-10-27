@@ -85,10 +85,10 @@ source tools/init-build.sh
 | `setup-build.sh` | Adds or replaces the managed configuration block in the active `local.conf`, preserving content outside the block. Rejects incomplete, duplicated or reversed markers. |
 | `bblayers.conf.template` | Defines the poky, OpenEmbedded, Raspberry Pi, Qt5 and project layer paths relative to `TOPDIR`. |
 | `local.conf.template` | Defines machine, parallelism, cache paths, fetch settings, image formats and init manager. |
-| `ssh.sh` | Connects as root using an explicit IPv4 address or resolves `PI_MAC` from the Windows ARP cache. Supports `--ip` and `PI_IP`. |
+| `ssh.sh` | Connects as root using an explicit IPv4 address or resolves `PI_MAC` from Ubuntu's IPv4 neighbor table. Supports `--ip` and `PI_IP`. |
 | `deploy-process.sh` | Builds and deploys the ARM64 executable for `usb`, `can` or `app`, with backup, service restart and attempted rollback. |
 
-Automatic MAC lookup requires Windows PowerShell interoperability and an existing Windows ARP entry. An explicit IP bypasses Windows commands. See [Wi-Fi provisioning and troubleshooting](../meta-usb-video-player/recipes-connectivity/wifi/README.md) for target setup.
+Automatic MAC lookup requires an existing entry in Ubuntu's IPv4 neighbor table; it does not scan the subnet or consult router DHCP leases. An explicit IP bypasses discovery. See [Wi-Fi provisioning and troubleshooting](../meta-usb-video-player/recipes-connectivity/wifi/README.md) for target setup.
 
 ## Updating build configuration
 
@@ -145,7 +145,7 @@ Installing packages in the image does not by itself configure the CAN controller
 
 ## SSH access
 
-These examples run from the repository's `Yocto` directory in WSL:
+These examples run from the repository's `Yocto` directory on Ubuntu:
 
 ```sh
 cd ~/projects/FastTrack01/Yocto
@@ -166,27 +166,27 @@ PI_MAC=b8:27:eb:db:99:c4 bash tools/ssh.sh --ip
 
 The default MAC is `b8:27:eb:db:99:c4`; use the actual wlan0 MAC of your board.
 `--ip` prints only the resolved address. Both colon and hyphen MAC notation are
-accepted. The current script reads Windows' ARP cache through PowerShell; it does
-not scan the subnet or consult the router's DHCP leases.
+accepted. The script reads Ubuntu's cached IPv4 neighbors with `ip neigh`; it does
+not scan the subnet or consult the router's DHCP leases. If the Pi is not listed,
+use its known address directly or check the router's DHCP client list.
 
-If the Pi is missing from that cache, and its current IP is known:
+If the Pi is missing from the neighbor table but its current IP is known, contact
+it once to populate the cache, then retry. Substitute the IP shown for your Pi:
 
 ```sh
-ping.exe -n 1 192.168.1.30
+ping -c 1 192.168.1.30
 bash tools/ssh.sh
 ```
 
-If Windows commands fail with `Exec format error` or `UtilAcceptVsock`, bypass
-interop with an explicit address or `PI_IP`:
+Or bypass discovery with an explicit address or `PI_IP`:
 
 ```sh
 bash tools/ssh.sh 192.168.1.30
 PI_IP=192.168.1.30 bash tools/ssh.sh
 ```
 
-To recover interop, finish any running builds before executing `wsl --shutdown`
-from Windows PowerShell, then reopen Ubuntu. Shutdown terminates all WSL processes.
-Check with `cmd.exe /c ver`. Do not assume an absent ARP entry means the Pi is offline.
+An absent neighbor-table entry does not mean the Pi is offline; the Pi may simply
+not have communicated with this computer recently.
 
 ## Deploy one process
 
@@ -228,8 +228,8 @@ PI_MAC=b8:27:eb:db:99:c4 bash ../tools/deploy-process.sh can
 PI_IP=192.168.1.30 bash ../tools/deploy-process.sh app
 ```
 
-Prefer an explicit address when WSL interop is unreliable. SSH keys avoid repeated
-password prompts; the scripts use standard SSH authentication and host-key checks.
+SSH keys avoid repeated password prompts; the scripts use standard SSH
+authentication and host-key checks.
 
 ### What deployment changes
 

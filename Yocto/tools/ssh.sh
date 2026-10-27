@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Resolve the Pi by MAC, or bypass Windows interop with an explicit IPv4 address.
+# Resolve the Pi from the Ubuntu neighbor table, or use an explicit IPv4 address.
 set -euo pipefail
 
 usage() {
@@ -21,7 +21,7 @@ if [[ $# -gt 1 ]]; then
     exit 2
 fi
 
-# This branch intentionally runs before any Windows command or MAC discovery.
+# This branch intentionally runs before neighbor-table discovery.
 IP="${1:-${PI_IP:-}}"
 if [[ -n "$IP" ]]; then
     if [[ ! "$IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -50,22 +50,23 @@ if [[ ! "$MAC" =~ ^([0-9a-f]{2}-){5}[0-9a-f]{2}$ ]]; then
     echo "ERROR: Invalid PI_MAC: $MAC" >&2
     exit 2
 fi
-command -v powershell.exe >/dev/null || { echo "ERROR: Windows powershell.exe is required; run from WSL." >&2; exit 1; }
+command -v ip >/dev/null || { echo "ERROR: The ip command is required (install the iproute2 package)." >&2; exit 1; }
 
-# Match the MAC column exactly; do not treat a substring match as a device match.
-if ! OUTPUT="$(powershell.exe -NoProfile -NonInteractive -Command 'arp.exe -a')"; then
-    echo "ERROR: Windows interop failed. Use: $0 192.168.1.30" >&2
+# Match the lladdr column exactly; do not treat a substring match as a device match.
+if ! OUTPUT="$(ip -4 neigh show)"; then
+    echo "ERROR: Could not read the IPv4 neighbor table. Use: $0 192.168.1.30" >&2
     exit 1
 fi
 mapfile -t IPS < <(printf '%s\n' "$OUTPUT" | tr -d '\r' |
-    awk -v mac="$MAC" 'tolower($2) == mac && $1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ { print $1 }' | sort -u)
+    awk -v mac="${MAC//-/:}" 'tolower($5) == mac && $1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ { print $1 }' | sort -u)
 if [[ ${#IPS[@]} -eq 0 ]]; then
-    echo "ERROR: Pi MAC $MAC is not in the Windows ARP cache." >&2
-    echo "Check that the Pi is online on the same LAN. This lookup reads cached neighbours; it does not scan the subnet." >&2
+    echo "ERROR: Pi MAC $MAC is not in the Ubuntu IPv4 neighbor table." >&2
+    echo "Connect both devices to the same LAN and make sure the Pi has communicated with this computer." >&2
+    echo "This lookup reads cached neighbors; it does not scan the subnet. Use an explicit IP if known." >&2
     exit 1
 fi
 if [[ ${#IPS[@]} -ne 1 ]]; then
-    echo "ERROR: Multiple IPs match $MAC: ${IPS[*]}. Refresh the ARP cache or pass the deploy IP explicitly." >&2
+    echo "ERROR: Multiple IPs match $MAC: ${IPS[*]}. Refresh the neighbor table or pass the deploy IP explicitly." >&2
     exit 1
 fi
 IP="${IPS[0]}"

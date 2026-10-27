@@ -11,35 +11,35 @@ AP/client isolation if enabled.
 |---|---|
 | `wpa-supplicant` | Association and WPA2 authentication on wlan0 |
 | `wifi-wlan0.service` | Starts and supervises wpa_supplicant at boot |
-| `systemd-networkd` | Obtains an IPv4 address and DNS information through DHCP |
+| `systemd-networkd` | Obtains Wi-Fi IPv4 through DHCP and assigns Ethernet a fixed IPv4 address |
 | `systemd-resolved` | Resolves names using the network's DNS configuration |
 | `20-wlan0.network` | Selects wlan0 and enables IPv4 DHCP with its MAC as client ID |
+| `25-eth0.network` | Assigns Ethernet `192.168.50.2/24` for a direct PC connection |
 | `kernel-module-brcmfmac` | SDIO Wi-Fi driver, enabled by the BSP kernel |
 | `kernel-module-brcmfmac-wcc` | Firmware vendor support loaded dynamically by the driver |
 | `linux-firmware-bcm43430` | Radio firmware and board data |
 | `wireless-regdb-static` | Kernel-loaded regulatory.db and signature |
 
 `usb-image.bb` installs `wifi-config` and enables OpenSSH/SFTP through
-`ssh-server-openssh`. DHCP/DNS use the existing systemd build configuration.
-USB and CAN services do not wait for Wi-Fi to connect.
+`ssh-server-openssh`. Wi-Fi uses DHCP; Ethernet is statically configured at
+`192.168.50.2/24` without a gateway so it can connect directly to a PC. USB and
+CAN services do not wait for Wi-Fi to connect.
 
 ## Configure credentials before building
 
-Run from the repository's `Yocto` directory in WSL. Create a private override
-without overwriting an existing one:
+Run from the repository's `Yocto` directory on Ubuntu. The private override at
+`meta-usb-video-player/recipes-connectivity/wifi/files/private/wpa_supplicant-wlan0.conf`
+is already configured locally for the supplied access point and is Git-ignored.
+It is not included in the public template or committed to the repository.
+Protect the file with:
 
 ```sh
 cd ~/projects/FastTrack01/Yocto
 wifi_dir=meta-usb-video-player/recipes-connectivity/wifi
-mkdir -p "$wifi_dir/files/private"
-if [ ! -e "$wifi_dir/files/private/wpa_supplicant-wlan0.conf" ]; then
-    cp "$wifi_dir/files/wpa_supplicant-wlan0.conf" "$wifi_dir/files/private/"
-fi
 chmod 600 "$wifi_dir/files/private/wpa_supplicant-wlan0.conf"
-nano "$wifi_dir/files/private/wpa_supplicant-wlan0.conf"
 ```
 
-Replace `ssid` and `psk`, and change `disabled=1` to `disabled=0`:
+To change networks later, edit the private file. Its format is:
 
 ```ini
 country=VN
@@ -78,10 +78,17 @@ ip -4 addr show wlan0
 cat /sys/class/net/wlan0/address
 ```
 
-Expect `wpa_state=COMPLETED` and an IPv4 address. The project board currently uses
+Expect `wpa_state=COMPLETED` and an IPv4 address. Ethernet should have the fixed
+address `192.168.50.2` when the new image is running:
+
+```sh
+ip -4 addr show eth0
+```
+
+The project board currently uses
 MAC `b8:27:eb:db:99:c4`; `192.168.1.30` is its observed DHCP address, not a guaranteed
-address for every boot or board. A router DHCP reservation can keep the address
-stable for that MAC. The Pi itself continues to use DHCP.
+address for every boot or board. A router DHCP reservation can keep the Wi-Fi
+address stable for that MAC; Ethernet uses its separate fixed address.
 
 Set a root password with `passwd` on the serial console or provision an SSH public
 key. This development image uses debug-tweaks and does not set a fixed password.
@@ -95,29 +102,37 @@ A socket-activated SSH service may start only when a client connects.
 
 ## Connect and deploy from the laptop
 
-From `Yocto` in WSL, use the Pi's actual address:
+From `Yocto` on Ubuntu, connect using the Pi's Ethernet address:
 
 ```sh
-bash tools/ssh.sh 192.168.1.30
+bash tools/ssh.sh 192.168.50.2
 ```
+
+Connect the PC's Ethernet port directly to the Pi. Configure the PC Ethernet
+interface as `192.168.50.1/24` (no gateway) in Ubuntu's network settings. The Pi
+and PC then use the fixed addresses `192.168.50.2` and `192.168.50.1` respectively.
+In Ubuntu, open **Settings → Network → Wired → gear icon → IPv4**, choose
+**Manual**, enter address `192.168.50.1` and netmask `255.255.255.0`, leave gateway
+and DNS empty, then apply. The target must have booted the newly built image with
+OpenSSH enabled. Set a root password with `passwd` on the Pi or provision an SSH
+public key.
 
 After initializing the build shell, deploy a selected process from the build
 directory:
 
 ```sh
-bash ../tools/deploy-process.sh usb 192.168.1.30
-bash ../tools/deploy-process.sh can 192.168.1.30
-bash ../tools/deploy-process.sh --logs app 192.168.1.30
+bash ../tools/deploy-process.sh usb 192.168.50.2
+bash ../tools/deploy-process.sh can 192.168.50.2
+bash ../tools/deploy-process.sh --logs app 192.168.50.2
 ```
 
 See [the tools README](../../../tools/README.md#deploy-one-process) for the full
 workflow, backups, rollback and binary-only deployment limits.
 
-Omitting the address makes `ssh.sh` resolve `PI_MAC` from the Windows ARP cache
-through PowerShell. This is cache lookup, not an active subnet scan. It depends
-on Windows interop and an existing entry. Explicit IP connections bypass this
-Windows dependency. See [SSH access](../../../tools/README.md#ssh-access) for
-MAC overrides and WSL troubleshooting.
+Omitting the address makes `ssh.sh` resolve `PI_MAC` from Ubuntu's IPv4 neighbor
+table. For a direct Ethernet connection, passing `192.168.50.2` is predictable
+and avoids MAC discovery. See
+[SSH access](../../../tools/README.md#ssh-access) for MAC overrides and details.
 
 ## Change Wi-Fi on an installed Pi
 
@@ -178,6 +193,6 @@ does not by itself prove DHCP succeeded.
 ### IP exists but SSH fails
 
 Check the laptop's network, AP client isolation, SSH socket/service and root
-credentials. For WSL `Exec format error` or `UtilAcceptVsock`, use an explicit IP
-with ssh.sh; these errors concern Windows interop during MAC lookup, not the
-Pi's SSH server. Confirm with a direct `ssh root@192.168.1.30` attempt.
+credentials. For Ethernet, check `ip -4 addr show eth0` on the Pi and ensure the
+PC Ethernet interface is `192.168.50.1/24`. Confirm SSH access with
+`ssh root@192.168.50.2`.
