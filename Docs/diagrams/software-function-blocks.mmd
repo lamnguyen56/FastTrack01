@@ -25,19 +25,21 @@ flowchart LR
         MODEL["UsbPlaylistModel: UI list model"]
         CLIENT["CanIpcClient: receive commands / validate checksum"]
         CONTROL["PlayerController: selection / transport / Auto Next"]
-        LIFE["MediaSessionLifecycle: replace media sessions"]
-        GATE["PlaybackCoordinator: readiness / Play / EOS"]
+        LIFE["MediaSessionLifecycle C++: replace media sessions"]
+        GATE["PlaybackCoordinator C++: readiness / Play / EOS"]
         POLICY["HardwareDecodePolicy: allow v4l2h264dec video only"]
         MEDIA["Qt Multimedia: MediaPlayer / VideoOutput"]
-        QML["QML: playlist / controls / overlay / USB notice"]
+        QML["QML view: playlist / controls / state bindings"]
         READER --> MODEL
         MODEL --> CONTROL
         MODEL --> QML
         READER -->|"Mount / disconnect state"| QML
         CLIENT --> CONTROL
         QML -->|"User actions"| CONTROL
-        CONTROL --> LIFE
-        CONTROL --> GATE
+        BRIDGE["VideoPlaybackBridge C++: controller signals / media reports"]
+        CONTROL --> BRIDGE
+        BRIDGE --> LIFE
+        BRIDGE --> GATE
         POLICY -->|"Applied before media creation"| MEDIA
         LIFE -->|"Recreate session on source changes"| MEDIA
         GATE <-->|"Play / readiness / EOS"| MEDIA

@@ -1,5 +1,15 @@
 # Shared source list for the application and headless QtCore integration tests.
 add_library(player-core STATIC
+    ${CMAKE_CURRENT_LIST_DIR}/Player/MediaSessionLifecycle.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Player/MediaSessionLifecycle.h
+    ${CMAKE_CURRENT_LIST_DIR}/Player/PlaybackCoordinator.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Player/PlaybackCoordinator.h
+    ${CMAKE_CURRENT_LIST_DIR}/Player/VideoPlaybackBridge.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Player/VideoPlaybackBridge.h
+    ${CMAKE_CURRENT_LIST_DIR}/Ui/PlayerOverlayState.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Ui/PlayerOverlayState.h
+    ${CMAKE_CURRENT_LIST_DIR}/Ui/UsbNoticeState.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Ui/UsbNoticeState.h
     ${CMAKE_CURRENT_LIST_DIR}/Ui/QmlCache.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Ui/QmlCache.h
     ${CMAKE_CURRENT_LIST_DIR}/Usb/UsbPlaylistModel.cpp

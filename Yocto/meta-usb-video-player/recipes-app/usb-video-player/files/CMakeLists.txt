@@ -23,6 +23,8 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Qml Quick Multimedia REQU
 include(src/PlayerCore.cmake)
 
 add_executable(${PROJECT_NAME}
+    src/Ui/QmlTypes.cpp
+    src/Ui/QmlTypes.h
     src/Player/HardwareDecodePolicy.cpp
     src/Player/HardwareDecodePolicy.h
     src/main.cpp

@@ -1,4 +1,4 @@
-// Exercise the actual QML transport coordinator without a display or decoder.
+// Exercise the registered C++ transport coordinator without a display or decoder.
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
@@ -6,6 +6,7 @@
 #include <QCoreApplication>
 #include <QQmlComponent>
 #include <QQmlEngine>
+#include "Ui/QmlTypes.h"
 #include <QVariant>
 #include <QDebug>
 
@@ -30,8 +31,10 @@ static void drain() {
 
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
+    registerPlayerQmlTypes();
     QQmlEngine engine;
-    QQmlComponent component(&engine, QUrl("qrc:/ui/PlaybackCoordinator.qml"));
+    QQmlComponent component(&engine);
+    component.setData("import UsbPlayer 1.0\nPlaybackCoordinator {}", QUrl());
     if (component.isError()) {
         qWarning() << component.errors();
     }
@@ -48,7 +51,7 @@ int main(int argc, char** argv) {
     assert(backend.plays == 0); // Never call back into the backend's status handler.
     drain();
     assert(backend.plays == 1);
-    assert(QMetaObject::invokeMethod(gate, "reportPlaying", Q_ARG(QVariant, QVariant(true))));
+    assert(QMetaObject::invokeMethod(gate, "reportPlaying", Q_ARG(bool, true)));
     assert(gate->property("pendingPlay").toBool() == false);
 
     gate->setProperty("atEnd", true);

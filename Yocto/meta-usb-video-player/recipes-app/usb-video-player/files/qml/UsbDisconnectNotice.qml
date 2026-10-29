@@ -6,32 +6,13 @@ Rectangle {
     id: notice
 
     property real unitScale: 1
-    property bool shown: false
+    readonly property bool shown: usbNoticeState.shown
     visible: shown
     implicitHeight: unitScale * 72
     radius: unitScale * 10
     color: "#20313F"
     border.color: "#67DCE7"
     border.width: unitScale
-
-    /** Show once per removal; a later removal starts a fresh display interval. */
-    function show() {
-        shown = true
-        timeout.restart()
-    }
-
-    /** Hide feedback without changing the player or USB state. */
-    function dismiss() {
-        timeout.stop()
-        shown = false
-    }
-
-    Timer {
-        id: timeout
-        interval: 6000
-        repeat: false
-        onTriggered: notice.dismiss()
-    }
 
     Column {
         anchors.left: parent.left
@@ -67,7 +48,7 @@ Rectangle {
         height: notice.unitScale * 36
         padding: notice.unitScale * 6
         Accessible.name: qsTr("Dismiss USB disconnected notification")
-        onClicked: notice.dismiss()
+        onClicked: usbNoticeState.dismiss()
         background: Rectangle {
             color: dismissButton.down ? "#0C6479" : "#164B5B"
             radius: notice.unitScale * 6

@@ -19,7 +19,11 @@ CAN IPC -> CanIpcClient -> PlayerController <- UI buttons
 | `UsbPlaylistReader` | Observe file/parent-directory changes, recover through polling, query mount state and validate snapshots |
 | `UsbPlaylistModel` | Expose ordered filename/path roles and count through QAbstractListModel |
 | `PlayerController` | Selection, bounded seek requests, transport commands, actual timeline/state and errors |
-| `PlayerApplication` | Wire USB, CAN and the QML view; keep main.cpp small |
+| `MediaSessionLifecycle` | C++ session teardown/recreation with obsolete-callback rejection |
+| `PlaybackCoordinator` | C++ pending Play, readiness checks, cancellation and deferred EOS |
+| `VideoPlaybackBridge` | C++ signal/slot routing, backend report validation and error policy |
+| `PlayerOverlayState` / `UsbNoticeState` | C++ overlay feedback and USB notification lifetime |
+| `PlayerApplication` | Register C++ QML types and wire USB, CAN, notification state and the view |
 | `VideoSurfaceQt5.qml` | Qt5 MediaPlayer and VideoOutput used on the Pi |
 | `VideoSurfaceQt6.qml` | Separate Qt6 desktop adapter with audio/video output APIs |
 
@@ -45,6 +49,15 @@ is disabled until duration and seekability are reported by the media engine. A
 surviving selected path keeps its playback position when the list is reordered.
 CAN commands and UI controls use the same controller. The CAN badge describes
 local IPC readiness, not physical CAN-bus connectivity.
+
+## C++ and QML boundary
+
+The `UsbPlayer 1.0` module exposes C++ QObject types through `Q_PROPERTY` and
+notification signals. Controller signals drive the C++ media bridge; QML forwards
+media callbacks and user actions to invokable C++ methods. Session recreation,
+Play/EOS scheduling, errors and notification timers run in C++ on the GUI event
+thread. QML retains MediaPlayer/VideoOutput ownership, layout bindings, animations
+and icon drawing. No worker thread or direct GStreamer pipeline is introduced.
 
 ## Build and deploy
 
@@ -268,7 +281,7 @@ The core tests exercise policy and signal behavior, not video rendering.
 
 ### Asynchronous media handoff
 
-PlaybackCoordinator.qml serializes Play and end-of-media handling for both Qt
+`PlaybackCoordinator` (C++) serializes Play and end-of-media handling for both Qt
 adapters. Completion is deferred until the old backend callback has returned.
 Play remains pending during LoadingMedia and is attempted outside status callbacks
 only when the requested source matches both the controller and backend and the
@@ -280,7 +293,7 @@ The AUTO NEXT card is anchored to the bottom-right of the control bar independen
 of the centered transport buttons. It shows PLAY NEXT VIDEO or STOP AT END and a
 font-independent toggle indicator.
 
-The headless async transport test instantiates the actual QML coordinator with
+The headless async transport test instantiates the registered C++ coordinator with
 mock backend objects. It covers delayed media readiness, deferred EOS, automatic
 next playback intent, stale sources, cancellation and repeated requests. It does
 not replace Pi checks with the real GStreamer backend: verify automatic next and
@@ -369,7 +382,7 @@ rendering and GStreamer handle release require Pi testing.
 
 ## Video overlay state
 
-PlayerOverlayState.qml separates empty/ready/loading/error feedback from video
+`PlayerOverlayState` (C++) separates empty/ready/loading/error feedback from video
 metadata. A pending Play or initial media load shows LOADING VIDEO with a busy
 indicator. After the backend reports PlayingState for that source, instructional
 text stays hidden through pause, buffering and held end-of-media. Changing source
@@ -379,7 +392,7 @@ or hasVideo metadata, which can be unavailable during media negotiation.
 
 The overlay-state test covers absent USB, empty/ready playlist, loading, started
 playback, pause/held-frame semantics, next selection, errors and unplug priority.
-It validates the QML state model; real video/frame timing requires a Pi test.
+It validates the C++ presentation state model; real video/frame timing requires a Pi test.
 
 ## Qt5 hardware-decoder session handoff
 

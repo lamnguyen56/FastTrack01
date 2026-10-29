@@ -4,6 +4,7 @@
 #include "Constants.h"
 #include "Logger.h"
 #include "Player/HardwareDecodePolicy.h"
+#include "Ui/QmlTypes.h"
 
 PlayerApplication::PlayerApplication()
     : usb_(playlist_, QString::fromUtf8(FastTrack::DEFAULT_USB_PLAYLIST_PATH),
@@ -14,6 +15,12 @@ PlayerApplication::PlayerApplication()
     QObject::connect(&can_, &CanIpcClient::commandPrev, &controller_, &PlayerController::previous);
     QObject::connect(&can_, &CanIpcClient::commandSeek, &controller_, &PlayerController::seekRelative);
 
+    registerPlayerQmlTypes();
+    QObject::connect(&usb_, &UsbPlaylistReader::disconnected, &notice_, &UsbNoticeState::show);
+    QObject::connect(&usb_, &UsbPlaylistReader::mountedChanged, &notice_, [this]() {
+        if (usb_.isMounted() == true) { notice_.dismiss(); }
+    });
+    engine_.rootContext()->setContextProperty("usbNoticeState", &notice_);
     engine_.rootContext()->setContextProperty("usbPlaylist", &playlist_);
     engine_.rootContext()->setContextProperty("usbReader", &usb_);
     engine_.rootContext()->setContextProperty("playerController", &controller_);

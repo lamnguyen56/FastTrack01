@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import UsbPlayer 1.0
 
 ApplicationWindow {
     id: rootWindow
@@ -26,16 +27,6 @@ ApplicationWindow {
         width: Math.min(rootWindow.width * 0.80, ui.u(640))
         unitScale: ui.scale
         z: 100
-    }
-
-    Connections {
-        target: usbReader
-        function onDisconnected() { usbNotice.show() }
-        function onMountedChanged() {
-            if (usbReader.mounted) {
-                usbNotice.dismiss()
-            }
-        }
     }
 
     // All state comes from the actual USB model and media engine.

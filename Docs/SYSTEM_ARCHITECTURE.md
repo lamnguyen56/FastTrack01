@@ -23,7 +23,7 @@ Sequence diagrams show interaction and callback ordering, not measured timing. T
 |---|---|
 | Playlist file event | 100 ms debounce, restarted by each new event |
 | Mount/playlist fallback check | 1000 ms poll timer |
-| Session creation and Play request | `Qt.callLater`, after the current callback, without a fixed delay |
+| Session creation and Play request | C++ queued callbacks, after the current callback, without a fixed delay |
 | Actual playback | Media is ready, source/generation checks pass and the backend reports Playing |
 
 Scan, load and decode times depend on USB storage, media files and system load. Timer intervals are not end-to-end latency guarantees.
@@ -69,6 +69,8 @@ The reverse status path has packet definitions, a send function and a codec. The
 ### Playback
 
 Qt Multimedia provides QML `MediaPlayer` and `VideoOutput`. On the Qt5 target, GStreamer is the backend beneath Qt Multimedia. `HardwareDecodePolicy` allows only `v4l2h264dec` for automatic video decoding and disables software video fallback; audio decoder ranks are unchanged. Media errors stop the current session, including audio, and show an error. There is no fixed resolution precheck: acceptance depends on decoder caps and backend errors.
+
+`MediaSessionLifecycle`, `PlaybackCoordinator` and `VideoPlaybackBridge` implement session and transport policy in C++; QML retains media/render objects and declarative bindings. `PlayerOverlayState` and `UsbNoticeState` provide UI feedback through properties and signals.
 
 `PlayerController` requests playback changes. Backend callbacks report actual state, position, duration and errors to the controller and UI. Auto Next defaults to enabled for each application session; the setting is not persisted.
 

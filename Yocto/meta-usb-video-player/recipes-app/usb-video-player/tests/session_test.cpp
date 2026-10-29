@@ -6,6 +6,7 @@
 #include <QCoreApplication>
 #include <QQmlComponent>
 #include <QQmlEngine>
+#include "Ui/QmlTypes.h"
 #include <QVariant>
 
 static void drain() {
@@ -16,8 +17,10 @@ static void drain() {
 
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
+    registerPlayerQmlTypes();
     QQmlEngine engine;
-    QQmlComponent component(&engine, QUrl("qrc:/ui/MediaSessionLifecycle.qml"));
+    QQmlComponent component(&engine);
+    component.setData("import UsbPlayer 1.0\nMediaSessionLifecycle {}", QUrl());
     QObject* session = component.create();
     assert(session != nullptr);
     session->setProperty("desiredSource", QUrl("file:///one.mp4"));

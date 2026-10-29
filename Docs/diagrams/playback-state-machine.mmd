@@ -10,7 +10,7 @@ stateDiagram-v2
     state "Media error" as MediaError
     [*] --> NoMedia
     NoMedia --> Resetting: Playlist has media, select first item
-    Resetting --> Session: Nonempty source, create session via Qt.callLater
+    Resetting --> Session: Nonempty source, create session via queued C++ callback
     Resetting --> NoMedia: Empty source
     state Session {
         [*] --> Loading

@@ -4,6 +4,7 @@
 #include "CanClient/CanIpcClient.h"
 #include "Player/PlayerController.h"
 #include "Usb/UsbPlaylistReader.h"
+#include "Ui/UsbNoticeState.h"
 
 /** @brief Composes USB data, transport control, CAN input and the QML view. */
 class PlayerApplication {
@@ -19,5 +20,6 @@ private:
     UsbPlaylistReader usb_; ///< Playlist/mount observer; never mounts devices itself.
     PlayerController controller_; ///< Single transport entry point for UI and CAN.
     CanIpcClient can_; ///< Existing nonblocking local CAN command receiver.
+    UsbNoticeState notice_; ///< C++ notification timer and dismissal state.
     QQmlApplicationEngine engine_; ///< Destroyed before its exposed context objects.
 };
