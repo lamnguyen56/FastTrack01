@@ -14,6 +14,12 @@ StandardError=journal
 SyslogIdentifier=usb-video-player
 # Render directly on the display using the EGLFS DRM/KMS backend.
 Environment="QT_QPA_PLATFORM=eglfs"
+# Share the EGL/GLES video path with Qt Quick; requires the layer's Qt patches.
+Environment="QT_GSTREAMER_USE_OPENGL_PLUGIN=1"
+Environment="GST_GL_PLATFORM=egl"
+Environment="GST_GL_API=gles2"
+# Preserve the last frame with one readback on flush, instead of every frame.
+Environment="QT_MULTIMEDIA_DEFER_FRAME_SNAPSHOT=1"
 # Prefer the stateful V4L2 H.264 decoder when the driver exposes it.
 # The app also enforces a video decoder allowlist before media creation.
 Environment="GST_PLUGIN_FEATURE_RANK=v4l2h264dec:300,avdec_h264:0"

@@ -43,6 +43,8 @@ public:
     Q_INVOKABLE void reportMediaError(int error, const QString& detail);
     /** @brief Release/recreate the selected session after the QML adapter is complete. */
     Q_INVOKABLE void initialize();
+    /** @brief Load Qt5 GL media only after VideoOutput publishes its render context. */
+    Q_INVOKABLE void prepareMedia(QObject* media, QObject* surface, const QUrl& source);
 signals:
     void controllerChanged();
     void lifecycleChanged();
@@ -51,6 +53,9 @@ signals:
     void qt5Changed();
     void stateChanged();
 private:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+    void tryPendingLoad();
+    void cancelPendingLoad();
     bool current() const;
     void releaseBackend();
     void stopBackend();
@@ -60,6 +65,9 @@ private:
     QPointer<MediaSessionLifecycle> lifecycle_;
     QPointer<PlaybackCoordinator> transport_;
     QPointer<QObject> backend_;
+    QPointer<QObject> pendingMedia_; ///< Media awaiting the matching VideoOutput GL context.
+    QPointer<QObject> pendingSurface_; ///< Dynamic GLContext property is observed on the GUI thread.
+    QUrl pendingSource_; ///< Cleared before every session release to reject stale loads.
     bool qt5_ = true; ///< Qt5 requires seek(int); Qt6 uses the position property.
     bool started_ = false; ///< Remains true through Pause/EOS until a session is replaced.
     bool blocked_ = false; ///< Prevent retries on media rejected by the current session.

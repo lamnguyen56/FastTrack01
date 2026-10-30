@@ -5,6 +5,8 @@ import UsbPlayer 1.0
 // Qt6 desktop uses its native audio/video output API with the same C++ policy.
 Item {
     id: surface
+    // The view enables faster position reports only while displaying its timeline.
+    property bool timelineActive: false
     readonly property var backend: sessionLoader.item !== null ? sessionLoader.item.player : null
     readonly property bool hasVideo: backend !== null && backend.hasVideo
     readonly property bool playbackStarted: bridge.playbackStarted

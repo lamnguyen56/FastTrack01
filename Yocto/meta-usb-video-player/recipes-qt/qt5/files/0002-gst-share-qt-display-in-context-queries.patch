@@ -1,0 +1,46 @@
+Qt Multimedia: answer display and shared GL context queries
+
+GStreamer GL elements query the native display and application context before
+negotiating their local context. Return Qt's display instead of allowing a new,
+unrelated default EGL display to be created on EGLFS.
+
+Upstream-Status: Pending
+
+--- a/src/gsttools/qgstvideorenderersink.cpp
++++ b/src/gsttools/qgstvideorenderersink.cpp
+@@ -401,7 +401,9 @@
+         const gchar *type;
+         gst_query_parse_context_type(query, &type);
+ 
+-        if (strcmp(type, "gst.gl.local_context") != 0)
++        const bool displayQuery = strcmp(type, GST_GL_DISPLAY_CONTEXT_TYPE) == 0;
++        if (!displayQuery && strcmp(type, "gst.gl.local_context") != 0
++                && strcmp(type, "gst.gl.app_context") != 0)
+             return false;
+ 
+         if (!m_gstGLDisplayContext)
+@@ -414,12 +416,20 @@
+         GstContext *context = nullptr;
+         gst_query_parse_context(query, &context);
+         context = context ? gst_context_copy(context) : gst_context_new(type, FALSE);
+-        GstStructure *structure = gst_context_writable_structure(context);
++        // GL elements must use the same native display as the Qt texture context.
++        // Otherwise they create a separate default EGL display on headless EGLFS.
++        if (displayQuery) {
++            GstGLDisplay *display = gst_gl_context_get_display(m_gstGLDisplayContext);
++            gst_context_set_gl_display(context, display);
++            gst_object_unref(display);
++        } else {
++            GstStructure *structure = gst_context_writable_structure(context);
+ #if GST_CHECK_VERSION(1,11,1)
+-        gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT, m_gstGLDisplayContext, nullptr);
++            gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT, m_gstGLDisplayContext, nullptr);
+ #else
+-        gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_gstGLDisplayContext, nullptr);
+-#endif
++            gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_gstGLDisplayContext, nullptr);
++#endif
++        }
+         gst_query_set_context(query, context);
+         gst_context_unref(context);
+ 

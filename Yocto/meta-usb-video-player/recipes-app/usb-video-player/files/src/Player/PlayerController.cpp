@@ -90,7 +90,7 @@ void PlayerController::selectTrack(int index) {
     if (index < 0 || index >= model_.count()) {
         return;
     }
-    if (index == currentIndex_) {
+    if (index == currentIndex_ && finished_ == false) {
         emit stopRequested();
     }
     setSelection(index);
@@ -101,11 +101,16 @@ void PlayerController::play() {
     if (source_.isEmpty() == true) {
         return;
     }
-    // An explicit Play after completion replays the selected file from the start.
+    // Keep the final frame until Play, then replace the drained EOS session.
+    // Reusing it through seek(0) can retain decoder/sink state on the Pi backend.
     if (finished_ == true) {
         finished_ = false;
-        emit seekRequested(0);
+        position_ = 0;
+        seekable_ = false;
+        emit stopRequested();
+        emit timelineChanged();
         emit playbackChanged();
+        LOG_I("Replaying selected media with a fresh session");
     }
     emit playRequested();
 }

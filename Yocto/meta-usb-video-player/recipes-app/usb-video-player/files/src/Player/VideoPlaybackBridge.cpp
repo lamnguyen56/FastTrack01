@@ -1,5 +1,6 @@
 #include "VideoPlaybackBridge.h"
 #include <QSize>
+#include <QDynamicPropertyChangeEvent>
 #include <QVariant>
 #include "Logger.h"
 
@@ -54,6 +55,7 @@ void VideoPlaybackBridge::setLifecycle(MediaSessionLifecycle* lifecycle) {
     if (lifecycle_.isNull() == false) {
         connect(lifecycle_, &MediaSessionLifecycle::releaseRequested, this, &VideoPlaybackBridge::releaseBackend);
         connect(lifecycle_, &MediaSessionLifecycle::sessionChanged, this, &VideoPlaybackBridge::checkConstructionError);
+        connect(lifecycle_, &MediaSessionLifecycle::sessionChanged, this, &VideoPlaybackBridge::tryPendingLoad);
     }
     emit lifecycleChanged();
 }
@@ -95,6 +97,7 @@ void VideoPlaybackBridge::stopBackend() {
 }
 
 void VideoPlaybackBridge::releaseBackend() {
+    cancelPendingLoad();
     // Lifecycle already marked itself resetting: stop callbacks must not update the controller.
     stopBackend();
     if (backend_.isNull() == false) {
@@ -200,4 +203,68 @@ void VideoPlaybackBridge::checkConstructionError() {
         reportMediaError(backend_->property("error").toInt(),
                          backend_->property("errorString").toString());
     }
+}
+
+void VideoPlaybackBridge::prepareMedia(QObject* media, QObject* surface, const QUrl& source) {
+    cancelPendingLoad();
+    if (media == nullptr) {
+        return;
+    }
+    if (qEnvironmentVariableIntValue("QT_GSTREAMER_USE_OPENGL_PLUGIN") == 0) {
+        media->setProperty("source", source); // Preserve the normal non-GL loading path.
+        return;
+    }
+    if (surface == nullptr) {
+        LOG_E("GL video loading requires a VideoOutput surface");
+        return;
+    }
+    pendingMedia_ = media;
+    pendingSurface_ = surface;
+    pendingSource_ = source;
+    surface->installEventFilter(this);
+    // VideoOutput publishes GLContext after its first scene-graph update. Never
+    // substitute a fixed delay: slow boots and rapid selections must remain safe.
+    tryPendingLoad();
+}
+
+bool VideoPlaybackBridge::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == pendingSurface_ && event->type() == QEvent::DynamicPropertyChange) {
+        auto* change = static_cast<QDynamicPropertyChangeEvent*>(event);
+        if (change->propertyName() == "GLContext") {
+            tryPendingLoad();
+        }
+    }
+    return QObject::eventFilter(watched, event);
+}
+
+void VideoPlaybackBridge::tryPendingLoad() {
+    if (pendingMedia_.isNull() == true || pendingSurface_.isNull() == true) {
+        return;
+    }
+    if (controller_.isNull() == false && controller_->source() != pendingSource_) {
+        cancelPendingLoad();
+        return;
+    }
+    if (lifecycle_.isNull() == false
+            && (lifecycle_->active() == false || lifecycle_->resetting() == true
+                || lifecycle_->sessionSource() != pendingSource_)) {
+        return;
+    }
+    if (pendingSurface_->property("GLContext").value<QObject*>() == nullptr) {
+        return;
+    }
+    QPointer<QObject> media = pendingMedia_;
+    const QUrl source = pendingSource_;
+    cancelPendingLoad();
+    LOG_I("VideoOutput GL context ready; loading media");
+    media->setProperty("source", source);
+}
+
+void VideoPlaybackBridge::cancelPendingLoad() {
+    if (pendingSurface_.isNull() == false) {
+        pendingSurface_->removeEventFilter(this);
+    }
+    pendingSurface_.clear();
+    pendingMedia_.clear();
+    pendingSource_.clear();
 }

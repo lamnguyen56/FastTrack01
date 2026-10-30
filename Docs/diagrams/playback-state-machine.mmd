@@ -20,7 +20,7 @@ stateDiagram-v2
         Playing --> Paused: Pause, backend confirms Paused
         Paused --> Playing: Play, backend confirms Playing
         Playing --> Ended: EOS handled after the current callback
-        Ended --> Playing: Auto Next off, Play requests seek to zero and replay
+        Ended --> Resetting: Auto Next off, Play requests a fresh session and replay
         Loading --> MediaError: Media rejected
         Ready --> MediaError: Backend error
         Playing --> MediaError: Backend error

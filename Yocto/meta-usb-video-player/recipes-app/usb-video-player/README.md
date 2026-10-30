@@ -47,8 +47,7 @@ a row or pressing Play starts playback. Next/Previous wrap at the actual count;
 EndOfMedia advances to the next track and wraps. Seek uses real milliseconds and
 is disabled until duration and seekability are reported by the media engine. A
 surviving selected path keeps its playback position when the list is reordered.
-CAN commands and UI controls use the same controller. The CAN badge describes
-local IPC readiness, not physical CAN-bus connectivity.
+CAN commands and UI controls use the same controller. CAN IPC readiness remains available through process logs.
 
 ## C++ and QML boundary
 
@@ -86,8 +85,8 @@ journalctl -u usb-video-player.service -f -o cat
 
 Use separate terminals for the two follow commands. Test these cases:
 
-1. Start with USB absent: zero rows, disconnected badge, empty-media message.
-2. Insert FAT32 USB containing videos: filenames/count appear and USB is mounted.
+1. Start with USB absent: empty-media message and no playlist rows.
+2. Insert FAT32 USB containing videos: USB mounts; opening the playlist shows filenames/count.
 3. Click a filename and Play: video renders, real duration/position update.
 4. Pause/resume, next/previous and seek; test a one-file drive too.
 5. Unplug during playback: video stops and the playlist/source clear.
@@ -151,7 +150,7 @@ creation fails, disk caching is disabled for that process. Old cache directories
 are left intact; there is no broad deletion of user cache files.
 
 After deploying the fixed app, the journal should include `QML UI fingerprint:`.
-The view should show the real USB filenames/count and mounted badge. Updating only
+Opening the playlist should show the real USB filenames/count. Updating only
 the app binary is sufficient for this cache fix; no service change or Qt rebuild
 is required. A diagnostic run can use QML_DISABLE_DISK_CACHE=1 to bypass disk cache,
 but the normal fixed application uses content-isolated caching.
@@ -447,3 +446,67 @@ installs the updated service setting. Confirm the startup Video decode policy lo
 rejection, no audio-only playback after video rejection, recovery on selecting a
 supported file and preservation of the AUTO NEXT/USB removal behavior on the Pi.
 Headless tests check failure messages and UI state, not hardware/GStreamer runtime.
+
+## Compact playback UI
+
+The normal view has no header or continuous CAN-status animation. Video fills
+the viewport; the transport bar overlays it. The playlist starts closed: use the bottom-left
+Playlist button or drag inward from the left edge to open it. Close with the
+same button, Escape, or an outward swipe. Clicking the exposed video area also closes the drawer and consumes that click. The footer toggle handles its click independently to avoid closing and immediately reopening the drawer. Selecting a track
+requests playback and closes the drawer; USB removal closes it as well.
+
+The compact, translucent drawer opens on the left, above the Playlist button, without resizing the media viewport. File names stay opaque; long names are elided and longer lists scroll. The list remains loaded while closed, and filename width is measured only when
+the model or font changes. Labels use native text rendering. Rows show numbers,
+filenames and a selection icon without per-row timeline or hover animation. Open/close transitions are
+disabled to reduce rendering work; interactive dragging remains available.
+Verify 1080p playback with the drawer closed/open, selection, edge dragging and
+portrait/landscape layouts on the Pi.
+
+Replay after a held end-of-media frame replaces the drained media session when
+Play is pressed, then starts the same source from zero. The final frame remains
+until that request. Pause/resume and ordinary seeking keep their existing paths.
+The playlist Drawer uses zero-duration position transitions: removing transition
+objects entirely on Qt5 can leave an opened drawer off-screen.
+
+
+### Auto-hidden playback controls
+
+During playback, the complete bottom bar (including Playlist and Auto Next) is
+hidden unless the pointer is over the bottom region. Pausing, reaching the end or dragging the seek slider keeps controls visible.
+Opening or dragging the playlist does not force the controls to appear. Move
+away from the bottom region to hide them again while playing. Clicking the video
+toggles Play/Pause; when the playlist is open, the first video click only closes
+it. Touch users can tap the video to pause and reveal controls.
+
+Controls have a transparent bar background and overlay the video without resizing its viewport. Hidden timeline labels
+and progress detach from position updates; visibility changes have no animation.
+
+
+Playlist width follows the widest filename measured in the display font, including
+space for row numbers, selection icons and padding. The header sets a minimum;
+the responsive drawer limit caps very long names, which remain elided.
+
+
+### Qt5 OpenGL video path
+
+The layer patches Qt Multimedia to specify the actual GL API, share Qt's
+native display with GStreamer and negotiate Qt-compatible 2D textures. An
+opt-in renderer change snapshots the retained last frame only on flush instead
+of reading it from GPU to CPU on every frame. For this path, the player waits for VideoOutput's
+`GLContext` property before loading the source; stale loads are cancelled when
+selection changes. The normal non-GL loading path remains immediate.
+
+The default service enables this path. It requires the matching patched `libQt5MultimediaGstTools` and
+`libQt5MultimediaQuick` libraries **and** the updated player, plus these service environment settings:
+
+```ini
+Environment="QT_GSTREAMER_USE_OPENGL_PLUGIN=1"
+Environment="QT_MULTIMEDIA_DEFER_FRAME_SNAPSHOT=1"
+Environment="GST_GL_PLATFORM=egl"
+Environment="GST_GL_API=gles2"
+```
+
+A full image build includes the patched libraries, the updated player and the
+required GStreamer OpenGL plugin. Binary-only player deployment is not sufficient
+when updating Qt libraries. Verify `video/x-raw(memory:GLMemory)` in
+the negotiated pipeline and test replay, seeking and track changes on the board.

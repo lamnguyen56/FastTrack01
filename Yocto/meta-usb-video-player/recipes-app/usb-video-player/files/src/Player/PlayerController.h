@@ -39,7 +39,7 @@ public:
 
     /** @brief Select a valid row and request playback; invalid rows are ignored. */
     Q_INVOKABLE void selectTrack(int index);
-    /** @brief Play or resume the current track if one exists. */
+    /** @brief Play/resume the track; replace a completed media session before replay. */
     Q_INVOKABLE void play();
     /** @brief Pause the active media engine. */
     Q_INVOKABLE void pause();

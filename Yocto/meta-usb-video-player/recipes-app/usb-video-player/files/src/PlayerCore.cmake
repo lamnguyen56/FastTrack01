@@ -6,6 +6,8 @@ add_library(player-core STATIC
     ${CMAKE_CURRENT_LIST_DIR}/Player/PlaybackCoordinator.h
     ${CMAKE_CURRENT_LIST_DIR}/Player/VideoPlaybackBridge.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Player/VideoPlaybackBridge.h
+    ${CMAKE_CURRENT_LIST_DIR}/Ui/PlaybackClickFeedback.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Ui/PlaybackClickFeedback.h
     ${CMAKE_CURRENT_LIST_DIR}/Ui/PlayerOverlayState.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Ui/PlayerOverlayState.h
     ${CMAKE_CURRENT_LIST_DIR}/Ui/UsbNoticeState.cpp

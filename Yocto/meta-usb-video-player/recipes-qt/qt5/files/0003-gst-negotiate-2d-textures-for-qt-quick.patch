@@ -1,0 +1,25 @@
+Qt Multimedia: negotiate 2D textures for Qt Quick GL frames
+
+Qt Quick binds GLTextureHandle video frames as GL_TEXTURE_2D. Restrict GL
+caps to that target so a decoder's external-oes texture is converted before
+its handle is handed to Qt.
+
+Upstream-Status: Pending
+
+--- a/src/gsttools/qgstvideorenderersink.cpp
++++ b/src/gsttools/qgstvideorenderersink.cpp
+@@ -101,8 +101,13 @@
+         }
+ 
+         GstCaps *caps = QGstUtils::capsForFormats(formats);
+-        for (guint i = 0; i < gst_caps_get_size(caps); ++i)
++        for (guint i = 0; i < gst_caps_get_size(caps); ++i) {
+             gst_caps_set_features(caps, i, gst_caps_features_from_string("memory:GLMemory"));
++            // QVideoFrame carries a texture ID without a target. Qt Quick binds
++            // this handle as GL_TEXTURE_2D, so external-oes is not compatible.
++            gst_structure_set(gst_caps_get_structure(caps, i),
++                              "texture-target", G_TYPE_STRING, "2D", nullptr);
++        }
+ 
+         return caps;
+     }

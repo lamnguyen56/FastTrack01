@@ -11,12 +11,9 @@ QtObject {
     readonly property real referenceHeight: portrait ? 1920 : 1080
     readonly property real scale: Math.max(0.01, Math.min(viewportWidth / referenceWidth,
                                                        viewportHeight / referenceHeight))
-    // Match the original compact chrome on the Pi HDMI reference display.
-    // These fractions remain relative at every resolution; no size cap is used.
-    readonly property real playlistWidthFraction: 300 / 1920
-    readonly property real portraitVideoFraction: 0.75
-    readonly property real panelGap: u(14)
-    readonly property real headerHeight: u(portrait ? 96 : 56)
+    // Keep the transport bar compact and size the overlay drawer by orientation.
+    // Maximum drawer width; shorter names use only their measured content width.
+    readonly property real playlistDrawerWidth: viewportWidth * (portrait ? 0.72 : 0.26)
     readonly property real footerHeight: u(portrait ? 172 : 112)
 
     /** Convert design units to viewport-relative Qt logical pixels. */

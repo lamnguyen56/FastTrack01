@@ -5,6 +5,8 @@ import UsbPlayer 1.0
 // QML owns media/render objects; C++ owns session and playback policy.
 Item {
     id: surface
+    // The view enables faster position reports only while displaying its timeline.
+    property bool timelineActive: false
     readonly property var backend: sessionLoader.item !== null ? sessionLoader.item.player : null
     readonly property bool hasVideo: backend !== null && backend.hasVideo
     readonly property bool playbackStarted: bridge.playbackStarted
@@ -50,6 +52,8 @@ Item {
             readonly property var player: media
             MediaPlayer {
                 id: media
+                // Native Qt position notifications; no extra polling timer or interpolation.
+                notifyInterval: surface.timelineActive ? 100 : 1000
                 source: ""
                 onPositionChanged: bridge.reportPosition(position)
                 onDurationChanged: bridge.reportDuration(duration)
@@ -59,6 +63,7 @@ Item {
             }
 
             VideoOutput {
+                id: videoOutput
                 anchors.fill: parent
                 source: media
                 fillMode: VideoOutput.PreserveAspectFit
@@ -68,7 +73,7 @@ Item {
             }
 
             // All children, including VideoOutput, must exist before source loading.
-            Component.onCompleted: media.source = sessionLifecycle.sessionSource
+            Component.onCompleted: bridge.prepareMedia(media, videoOutput.videoSurface, sessionLifecycle.sessionSource)
         }
     }
 

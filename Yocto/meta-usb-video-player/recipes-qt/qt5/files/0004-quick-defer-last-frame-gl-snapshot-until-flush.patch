@@ -1,0 +1,37 @@
+Qt Multimedia: defer the optional LastFrame GPU snapshot until flush
+
+When enabled, retain only the current GL frame during playback instead of
+reading it back to CPU on every frame. Snapshot once when flushing, releasing
+the GL reference so the stopped frame does not retain pipeline resources.
+The default behavior is unchanged unless QT_MULTIMEDIA_DEFER_FRAME_SNAPSHOT=1.
+
+Upstream-Status: Pending
+
+--- a/src/qtmultimediaquicktools/qdeclarativevideooutput_render.cpp
++++ b/src/qtmultimediaquicktools/qdeclarativevideooutput_render.cpp
+@@ -369,7 +369,11 @@
+ 
+         if ((q->flushMode() == QDeclarativeVideoOutput::FirstFrame && !m_frameOnFlush.isValid())
+             || q->flushMode() == QDeclarativeVideoOutput::LastFrame) {
+-            m_frameOnFlush = m_surfaceFormat.handleType() == QAbstractVideoBuffer::NoHandle
++            // A GL readback on every frame defeats the accelerated video path.
++            // The opt-in mode keeps one frame reference, then snapshots it on flush.
++            static const bool deferSnapshot = qEnvironmentVariableIntValue("QT_MULTIMEDIA_DEFER_FRAME_SNAPSHOT") != 0;
++            const bool keepGpuFrame = deferSnapshot && q->flushMode() == QDeclarativeVideoOutput::LastFrame;
++            m_frameOnFlush = m_surfaceFormat.handleType() == QAbstractVideoBuffer::NoHandle || keepGpuFrame
+                 ? m_frame
+                 : m_frame.image();
+         }
+@@ -410,6 +414,12 @@
+ void QDeclarativeVideoRendererBackend::present(const QVideoFrame &frame)
+ {
+     m_frameMutex.lock();
++    // Copy once before releasing pipeline resources. The retained stopped frame
++    // must own CPU pixels, not pin a GL/decoder buffer for an indefinite period.
++    if (!frame.isValid() && m_frameOnFlush.isValid()
++            && m_frameOnFlush.handleType() != QAbstractVideoBuffer::NoHandle) {
++        m_frameOnFlush = m_frameOnFlush.image();
++    }
+     m_frame = frame.isValid() ? frame : m_frameOnFlush;
+     m_frameChanged = true;
+     m_frameMutex.unlock();

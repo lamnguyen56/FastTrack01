@@ -7,6 +7,7 @@
 class UsbPlaylistModel : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(int count READ count NOTIFY playlistChanged)
+    Q_PROPERTY(QStringList titles READ titles NOTIFY playlistChanged)
 
 public:
     /** @brief Roles used by the QML delegate. */
@@ -27,6 +28,9 @@ public:
     /** @brief Return the number of files in the published snapshot. */
     int count() const;
 
+    /** @brief Cached display names, published with the snapshot for view sizing. */
+    QStringList titles() const;
+
     /** @brief Return a file path, or an empty string for an invalid row. */
     QString pathAt(int row) const;
 
@@ -42,4 +46,5 @@ signals:
 
 private:
     QStringList files_; ///< Canonical local paths, in publisher order.
+    QStringList titles_; ///< File names without directory prefixes, in the same order.
 };

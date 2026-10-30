@@ -14,7 +14,7 @@ QVariant UsbPlaylistModel::data(const QModelIndex& index, int role) const {
     }
 
     if (role == TitleRole) {
-        return QFileInfo(files_.at(index.row())).fileName();
+        return titles_.at(index.row());
     }
     if (role == FilePathRole) {
         return files_.at(index.row());
@@ -28,6 +28,10 @@ QHash<int, QByteArray> UsbPlaylistModel::roleNames() const {
 
 int UsbPlaylistModel::count() const {
     return files_.size();
+}
+
+QStringList UsbPlaylistModel::titles() const {
+    return titles_;
 }
 
 QString UsbPlaylistModel::pathAt(int row) const {
@@ -48,6 +52,11 @@ void UsbPlaylistModel::replaceFiles(const QStringList& files) {
 
     beginResetModel();
     files_ = files;
+    titles_.clear();
+    titles_.reserve(files_.size());
+    for (const QString& path : files_) {
+        titles_.append(QFileInfo(path).fileName());
+    }
     endResetModel();
     emit playlistChanged();
 }
